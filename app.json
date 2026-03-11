@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "INFLIQ",
+    "slug": "infliq",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00008B"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.infliq.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#00008B"
+      },
+      "package": "com.infliq.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      },
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow INFLIQ to use your location to show nearby users."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow INFLIQ to access your photos to upload content."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow INFLIQ to access your camera for video calls."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "42c72f9f-e436-4d03-9f10-7198ed3d3c3f"
+      }
+    }
+  }
+}
