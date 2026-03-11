@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INFLIQ - Test Instructions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #00008B 0%, #0000CD 100%);
+            color: white;
+        }
+        .card {
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #00008B;
+            margin-top: 0;
+        }
+        .step {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #0000CD;
+        }
+        .button {
+            display: inline-block;
+            background: #00008B;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .button:hover {
+            background: #0000CD;
+        }
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .success {
+            color: #00AA00;
+            font-weight: bold;
+        }
+        .error {
+            color: #CC0000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚀 INFLIQ MVP - Testing Instructions</h1>
+        
+        <div class="step">
+            <h3>✅ Step 1: Open the App</h3>
+            <p>Click the button below to open the INFLIQ app:</p>
+            <a href="http://localhost:8081" class="button" target="_blank">Open INFLIQ App</a>
+        </div>
+
+        <div class="step">
+            <h3>📱 Step 2: What You Should See</h3>
+            <p>The app should show:</p>
+            <ul>
+                <li><strong>Deep blue background</strong> (#00008B)</li>
+                <li><strong>White card</strong> with login form</li>
+                <li><strong>Email and password fields</strong></li>
+                <li><strong>"Send OTP" button</strong></li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🧪 Step 3: Test OTP Login</h3>
+            <ol>
+                <li>Enter phone number: <code>+1234567890</code></li>
+                <li>Click <strong>"Send OTP"</strong></li>
+                <li>The OTP will appear in the response (test mode)</li>
+                <li>Enter the OTP code</li>
+                <li>Click <strong>"Verify OTP"</strong></li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>🎯 Step 4: Navigate the App</h3>
+            <p>After login, you should see 5 tabs at the bottom:</p>
+            <ul>
+                <li>🌍 Map - Map discovery</li>
+                <li>📰 Feed - Coming soon</li>
+                <li>➕ Create - Coming soon</li>
+                <li>🎥 Reels - Coming soon</li>
+                <li>👤 Profile - Coming soon</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>❓ If You See a Blank Screen</h3>
+            <p class="error">Don't worry! Try these steps:</p>
+            <ol>
+                <li>Press <code>F5</code> to refresh the page</li>
+                <li>Wait 10-15 seconds for the app to load</li>
+                <li>Press <code>F12</code> to open Developer Tools</li>
+                <li>Check the <strong>Console</strong> tab for errors</li>
+                <li>Look for any red error messages</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>✨ Current Status</h3>
+            <p class="success">✅ Backend services are running</p>
+            <p class="success">✅ Frontend is building...</p>
+            <p>The app is currently starting up. Please wait a moment and then click the button above!</p>
+        </div>
+
+        <div class="step">
+            <h3>📞 Need Help?</h3>
+            <p>If you see any errors or the app doesn't load:</p>
+            <ol>
+                <li>Take a screenshot of what you see</li>
+                <li>Press F12 and screenshot any console errors</li>
+                <li>Let me know and I'll help fix it!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Auto-check if the app is running
+        setTimeout(() => {
+            fetch('http://localhost:8081')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('✅ App is running!');
+                    }
+                })
+                .catch(error => {
+                    console.log('⚠️ App might still be starting...');
+                });
+        }, 2000);
+    </script>
+</body>
+</html>
