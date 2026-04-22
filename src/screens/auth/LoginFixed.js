@@ -31,11 +31,11 @@ export default function LoginScreen({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await authService.sendOTP(phone);
+            await authService.sendOTP(phone);
             setShowOTP(true);
-            Alert.alert('Success', `OTP sent! Test OTP: ${response.testOTP || 'Check your phone'}`);
         } catch (error) {
-            Alert.alert('Error', error.response?.data?.error || 'Failed to send OTP');
+            console.error('Send OTP error:', error);
+            Alert.alert('Error', error.error || error.message || 'Failed to send OTP');
         } finally {
             setLoading(false);
         }

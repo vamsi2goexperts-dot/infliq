@@ -23,6 +23,42 @@ import CallButton from '../../components/calls/CallButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 
+const safeUri = (uri) => {
+    if (!uri) return null;
+    // Production Android blocks http:// — upgrade to https:// for any Render/backend URLs
+    if (uri.startsWith('http://')) return uri.replace('http://', 'https://');
+    return uri;
+};
+
+const GridImage = ({ uri, style }) => {
+    const [failed, setFailed] = useState(false);
+    const safe = safeUri(uri);
+    console.log('[GridImage] uri:', safe);
+    if (!safe || failed) {
+        return (
+            <View style={[style, styles.mediaFallback]}>
+                <Ionicons name="image-outline" size={24} color={COLORS.mediumGray} />
+            </View>
+        );
+    }
+    return (
+        <Image
+            source={{ uri: safe }}
+            style={style}
+            onError={(e) => {
+                console.warn('[GridImage] load failed:', safe, e.nativeEvent?.error);
+                setFailed(true);
+            }}
+        />
+    );
+};
+
+const STATIC_NOTIFICATIONS = [
+    { id: 'n1', title: 'AOC liked your post', subtitle: '2m ago', action: 'profile' },
+    { id: 'n2', title: '3 new message requests', subtitle: 'Open inbox', action: 'messages' },
+    { id: 'n3', title: 'Trending: #AICreators', subtitle: 'Tap to explore', action: 'search' },
+];
+
 export default function ProfileScreen({ route, navigation }) {
     const { user: currentUser, logout: authLogout, setAuthSession, token } = useAuth();
     const [profile, setProfile] = useState(null);
@@ -30,6 +66,7 @@ export default function ProfileScreen({ route, navigation }) {
     const [currentUserId, setCurrentUserId] = useState(null);
     const [posts, setPosts] = useState([]);
     const [activeTab, setActiveTab] = useState('grid');
+    const [showNotifications, setShowNotifications] = useState(false);
     const userId = route?.params?.userId;
     const [imageError, setImageError] = useState(false);
     const isOwnProfile = !userId || userId === currentUserId;
@@ -96,7 +133,9 @@ export default function ProfileScreen({ route, navigation }) {
             const myUserId = await AsyncStorage.getItem('userId');
             const targetUserId = userId || myUserId;
             const response = await postService.getUserPosts(targetUserId);
-            setPosts(response.posts || []);
+            const posts = response.posts || [];
+            console.log('[ProfileScreen] mediaUrls:', posts.map(p => p.mediaUrl));
+            setPosts(posts);
         } catch (error) {
             console.error('Failed to load posts:', error);
         }
@@ -148,6 +187,7 @@ export default function ProfileScreen({ route, navigation }) {
     }
 
     const isFollowing = currentUser?.following?.includes(profile._id);
+    const profileUri = imageError ? null : safeUri(profile.profilePicture);
 
     const handleFollow = async () => {
         try {
@@ -191,8 +231,23 @@ export default function ProfileScreen({ route, navigation }) {
         }
     };
 
+    const handleNotificationPress = (notification) => {
+        setShowNotifications(false);
+
+        if (notification.action === 'messages') {
+            navigation.navigate('Messages');
+            return;
+        }
+
+        if (notification.action === 'search') {
+            navigation.navigate('Search');
+            return;
+        }
+    };
+
     const renderGridItem = ({ item }) => {
         const isVideo = item.mediaType === 'video' || item.type === 'reel';
+        const mediaUri = safeUri(item.mediaUrl);
 
         return (
             <TouchableOpacity
@@ -200,19 +255,22 @@ export default function ProfileScreen({ route, navigation }) {
                 onPress={() => navigation.navigate('PostDetail', { post: item })}
             >
                 {isVideo ? (
-                    <Video
-                        style={styles.gridImage}
-                        source={{ uri: item.mediaUrl }}
-                        resizeMode="cover"
-                        shouldPlay={false}
-                        isMuted={true}
-                        initialStatus={{ positionMillis: 100 }} // Show 0.1s frame as preview
-                    />
+                    mediaUri ? (
+                        <Video
+                            style={styles.gridImage}
+                            source={{ uri: mediaUri }}
+                            resizeMode="cover"
+                            shouldPlay={false}
+                            isMuted={true}
+                            initialStatus={{ positionMillis: 100 }}
+                        />
+                    ) : (
+                        <View style={[styles.gridImage, styles.mediaFallback]}>
+                            <Ionicons name="videocam-outline" size={24} color={COLORS.mediumGray} />
+                        </View>
+                    )
                 ) : (
-                    <Image
-                        source={{ uri: item.mediaUrl || 'https://via.placeholder.com/150' }}
-                        style={styles.gridImage}
-                    />
+                    <GridImage uri={item.mediaUrl} style={styles.gridImage} />
                 )}
                 {item.type === 'reel' && (
                     <View style={styles.reelBadge}>
@@ -245,8 +303,14 @@ export default function ProfileScreen({ route, navigation }) {
                     </TouchableOpacity>
                 </View>
                 <View style={styles.headerIcons}>
-                    <TouchableOpacity style={styles.headerIcon}>
+                    <TouchableOpacity
+                        style={[styles.headerIcon, styles.notificationIcon]}
+                        onPress={() => setShowNotifications(prev => !prev)}
+                    >
                         <Ionicons name="notifications-outline" size={26} color={COLORS.black} />
+                        <View style={styles.notificationBadge}>
+                            <Text style={styles.notificationBadgeText}>{STATIC_NOTIFICATIONS.length}</Text>
+                        </View>
                     </TouchableOpacity>
                     {isOwnProfile && (
                         <TouchableOpacity
@@ -258,6 +322,31 @@ export default function ProfileScreen({ route, navigation }) {
                     )}
                 </View>
             </View>
+
+            {showNotifications && (
+                <View style={styles.notificationsPanel}>
+                    <View style={styles.notificationsHeader}>
+                        <Text style={styles.notificationsTitle}>Notifications</Text>
+                        <Text style={styles.notificationsCount}>{STATIC_NOTIFICATIONS.length} new</Text>
+                    </View>
+                    {STATIC_NOTIFICATIONS.map((notification) => (
+                        <TouchableOpacity
+                            key={notification.id}
+                            style={styles.notificationItem}
+                            onPress={() => handleNotificationPress(notification)}
+                        >
+                            <View style={styles.notificationIconWrap}>
+                                <Ionicons name="sparkles-outline" size={18} color={COLORS.royalBlue} />
+                            </View>
+                            <View style={styles.notificationContent}>
+                                <Text style={styles.notificationTitle}>{notification.title}</Text>
+                                <Text style={styles.notificationSubtitle}>{notification.subtitle}</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={COLORS.mediumGray} />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
 
             <FlatList
                 data={filteredPosts}
@@ -272,11 +361,17 @@ export default function ProfileScreen({ route, navigation }) {
                         <View style={styles.profileInfoSection}>
                             <View style={styles.profileRow}>
                                 <View style={styles.imageContainer}>
-                                    <Image
-                                        source={{ uri: (imageError || !profile.profilePicture) ? 'https://via.placeholder.com/120' : profile.profilePicture }}
-                                        style={styles.profileImage}
-                                        onError={() => setImageError(true)}
-                                    />
+                                    {profileUri ? (
+                                        <Image
+                                            source={{ uri: profileUri }}
+                                            style={styles.profileImage}
+                                            onError={() => setImageError(true)}
+                                        />
+                                    ) : (
+                                        <View style={[styles.profileImage, styles.profileImageFallback]}>
+                                            <Ionicons name="person" size={34} color={COLORS.mediumGray} />
+                                        </View>
+                                    )}
                                     {isOwnProfile && (
                                         <TouchableOpacity style={styles.addIconSmall}>
                                             <Ionicons name="add" size={14} color={COLORS.white} />
@@ -431,7 +526,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 10,
+        paddingTop: 10,
         backgroundColor: COLORS.white,
     },
     headerLeft: {
@@ -459,6 +554,87 @@ const styles = StyleSheet.create({
     },
     headerIcon: {
         padding: 4,
+    },
+    notificationIcon: {
+        position: 'relative',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 0,
+        right: -2,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#FF3B30',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    notificationBadgeText: {
+        color: COLORS.white,
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    notificationsPanel: {
+        position: 'absolute',
+        top: 52,
+        right: 12,
+        width: 280,
+        backgroundColor: COLORS.white,
+        borderRadius: 18,
+        paddingVertical: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 18,
+        elevation: 12,
+        zIndex: 50,
+    },
+    notificationsHeader: {
+        paddingHorizontal: 14,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    notificationsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: COLORS.black,
+    },
+    notificationsCount: {
+        fontSize: 12,
+        color: COLORS.darkGray,
+        marginTop: 2,
+    },
+    notificationItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFC',
+    },
+    notificationIconWrap: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#EEF4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    notificationContent: {
+        flex: 1,
+    },
+    notificationTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.black,
+    },
+    notificationSubtitle: {
+        fontSize: 12,
+        color: COLORS.darkGray,
+        marginTop: 2,
     },
     profileInfoSection: {
         paddingTop: 10,
@@ -619,6 +795,11 @@ const styles = StyleSheet.create({
     gridImage: {
         width: '100%',
         height: '100%',
+        backgroundColor: COLORS.lightGray,
+    },
+    mediaFallback: {
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: COLORS.lightGray,
     },
     videoPlaceholder: {

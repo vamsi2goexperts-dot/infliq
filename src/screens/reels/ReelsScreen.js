@@ -20,13 +20,20 @@ import { Animated } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const ReelItem = ({ item, isVisible, index }) => {
+const safeVideoUri = (uri) => {
+    if (!uri || typeof uri !== 'string' || uri.trim() === '') return null;
+    return uri.startsWith('http://') ? uri.replace('http://', 'https://') : uri;
+};
+
+const ReelItem = ({ item, isVisible, nearVisible, index }) => {
     const { user } = useAuth();
     const videoRef = useRef(null);
     const [status, setStatus] = useState({});
+    const [videoError, setVideoError] = useState(false);
     const [isLiked, setIsLiked] = useState(item.likes?.includes(user?._id));
     const [likesCount, setLikesCount] = useState(item.likes?.length || 0);
     const lastTapRef = useRef(null);
+    const videoUri = safeVideoUri(item.mediaUrl);
 
     // Animation states
     const heartScale = useRef(new Animated.Value(0)).current;
@@ -35,18 +42,17 @@ const ReelItem = ({ item, isVisible, index }) => {
 
     // Imperative Playback Control
     useEffect(() => {
-        const itemActive = isVisible && isFocused;
+        const itemActive = isVisible && isFocused && !!videoUri && !videoError;
         if (videoRef.current) {
             if (itemActive) {
                 console.log(`▶️ PLAY request for Index ${index}`);
-                // Unmute when playing to ensure sound
                 videoRef.current.setIsMutedAsync(false).catch(() => { });
                 videoRef.current.playAsync().catch(e => {
                     if (e.message && (e.message.includes('interrupted') || e.message.includes('removed'))) return;
                     console.log('Play error:', e);
                 });
             } else {
-                videoRef.current.pauseAsync().catch(e => { });
+                videoRef.current.pauseAsync().catch(() => { });
             }
         }
 
@@ -54,11 +60,9 @@ const ReelItem = ({ item, isVisible, index }) => {
             if (videoRef.current) {
                 console.log(`Cleanup for Index ${index}`);
                 videoRef.current.pauseAsync().catch(() => { });
-                // Optional: unload to free resources and ensure audio stops
-                videoRef.current.unloadAsync().catch(() => { });
             }
         };
-    }, [isVisible, isFocused, index]);
+    }, [isVisible, isFocused, index, videoUri, videoError]);
 
     const animateHeart = () => {
         heartScale.setValue(0.5);
@@ -120,20 +124,32 @@ const ReelItem = ({ item, isVisible, index }) => {
                 onPress={handleDoubleTap}
                 style={StyleSheet.absoluteFill}
             >
-                <Video
-                    ref={videoRef}
-                    style={styles.video}
-                    source={{ uri: item.mediaUrl || 'https://www.w3schools.com/html/mov_bbb.mp4' }}
-                    resizeMode="cover"
-                    isLooping
-                    shouldPlay={false} // Managed imperatively now
-                    isMuted={false}
-                    initialStatus={{ positionMillis: 100 }} // Seek to 0.1s to show preview
-                    onPlaybackStatusUpdate={status => setStatus(() => status)}
-                    onError={(error) => {
-                        console.log('Video load error:', error);
-                    }}
-                />
+                {nearVisible ? (
+                    videoUri && !videoError ? (
+                        <Video
+                            ref={videoRef}
+                            style={styles.video}
+                            source={{ uri: videoUri }}
+                            resizeMode="cover"
+                            isLooping
+                            shouldPlay={false}
+                            isMuted={false}
+                            onPlaybackStatusUpdate={s => {
+                                if (s.error && !videoError) {
+                                    console.warn(`[ReelItem ${index}] Playback error:`, s.error);
+                                    setVideoError(true);
+                                }
+                                setStatus(() => s);
+                            }}
+                        />
+                    ) : (
+                        <View style={[styles.video, styles.videoFallback]}>
+                            <Ionicons name="videocam-off-outline" size={48} color="rgba(255,255,255,0.4)" />
+                        </View>
+                    )
+                ) : (
+                    <View style={[styles.video, { backgroundColor: '#000' }]} />
+                )}
             </TouchableOpacity>
 
             {/* Pulsing Heart Animation Overlay */}
@@ -255,6 +271,7 @@ export default function ReelsScreen() {
                         <ReelItem
                             item={item}
                             isVisible={index === visibleIndex}
+                            nearVisible={Math.abs(index - visibleIndex) <= 1}
                             index={index}
                         />
                     </View>
@@ -309,11 +326,16 @@ const styles = StyleSheet.create({
     video: {
         ...StyleSheet.absoluteFillObject,
     },
+    videoFallback: {
+        backgroundColor: '#111',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     overlay: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'flex-end',
         padding: 20,
-        paddingBottom: 40,
+        paddingBottom: 24,
         flexDirection: 'row',
     },
     leftColumn: {

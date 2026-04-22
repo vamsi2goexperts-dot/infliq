@@ -5,13 +5,14 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    SafeAreaView,
     StatusBar,
     Alert
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import Toast from '../../components/Toast';
 
 const SettingsItem = ({ icon, label, onPress, showArrow = true, color = COLORS.black }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
@@ -31,6 +32,12 @@ const SectionHeader = ({ title }) => (
 
 export default function SettingsScreen({ navigation }) {
     const { logout } = useAuth();
+    const insets = useSafeAreaInsets();
+    const [toast, setToast] = React.useState({ visible: false, message: '', type: 'success' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ visible: true, message, type });
+    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -72,7 +79,10 @@ export default function SettingsScreen({ navigation }) {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: Math.max(insets.bottom + 40, 72) }
+                ]}
             >
                 {/* ACCOUNT SECTION */}
                 <SectionHeader title="ACCOUNT" />
@@ -150,6 +160,13 @@ export default function SettingsScreen({ navigation }) {
                                 { label: "Phone Number", value: "+91 94414*****7", type: "text" },
                                 { label: "Gender", value: "Not specified", type: "text" }
                             ]
+                        },
+                        {
+                            title: "Account Actions",
+                            items: [
+                                { label: "Deactivate Account", value: "Temporarily disabled", type: "text" },
+                                { label: "Delete Account", type: "arrow" }
+                            ]
                         }
                     ])}
                 />
@@ -182,16 +199,51 @@ export default function SettingsScreen({ navigation }) {
                 <SettingsItem 
                     icon="warning-outline" 
                     label="Report a Problem" 
-                    onPress={() => navigateToDetail("Report a Problem", [
-                        {
-                            title: "Feedback",
-                            items: [
-                                { label: "Report a Bug", type: "arrow" },
-                                { label: "Abuse or Spam", type: "arrow" },
-                                { label: "Suggestions", type: "arrow" }
-                            ]
-                        }
-                    ])}
+                    onPress={() => navigation.navigate('SettingsDetail', {
+                        title: 'Report a Problem',
+                        articleContent: [
+                            {
+                                heading: '1. How do I report a bug in the app?',
+                                body: 'If something is not working as expected, open the support area from Settings and include the screen name, what you were trying to do, and what happened instead. Reports with clear steps help the support team review the issue faster.'
+                            },
+                            {
+                                heading: '2. What details should I include in my report?',
+                                body: 'The most helpful reports include your device model, app version, network condition, and the approximate time the issue occurred. If available, screenshots or screen recordings can make it easier to understand the problem.'
+                            },
+                            {
+                                heading: '3. How long does it take to review a report?',
+                                body: 'Most reports are reviewed within one to two business days. Issues related to login, safety, payments, or account access are handled with higher priority whenever possible.'
+                            },
+                            {
+                                heading: '4. Can I report abusive content or spam?',
+                                body: 'Yes. Reports involving harassment, spam, impersonation, or harmful behavior are reviewed by the moderation team. The team evaluates the report in context and may take action based on severity and account history.'
+                            },
+                            {
+                                heading: '5. Will I be notified after submitting a report?',
+                                body: 'Important updates may appear in the app or through your support history when additional information is needed. In some cases, action may be taken without a direct follow-up message if the issue has already been resolved internally.'
+                            },
+                            {
+                                heading: '6. What if I have a suggestion instead of a bug?',
+                                body: 'Suggestions are welcome and are reviewed as part of product planning. The most useful requests explain the specific problem, why the improvement matters, and how it would make the experience better for users.'
+                            },
+                            {
+                                heading: '7. Can I report a problem with messages or calls?',
+                                body: 'Yes. If the issue affects chat delivery, notifications, call connection, or media sharing, mention whether it happened in a one-to-one chat, a request thread, or during an active call so the team can narrow down the cause.'
+                            },
+                            {
+                                heading: '8. What should I do if login or OTP is delayed?',
+                                body: 'Please allow a short waiting period and confirm that your network signal is stable. If the issue continues, include the phone number format used and the time the request was made so the support team can review delivery behavior.'
+                            },
+                            {
+                                heading: '9. Are repeated reports necessary for the same issue?',
+                                body: 'One clear report is usually enough. If you notice new behavior related to the same issue, it is better to add updated details rather than sending multiple separate reports with identical information.'
+                            },
+                            {
+                                heading: '10. How are urgent safety concerns handled?',
+                                body: 'Safety-related reports are prioritized and reviewed as quickly as possible. Content or accounts that appear to involve immediate abuse, impersonation, or threats may be limited while the review is in progress.'
+                            }
+                        ]
+                    })}
                 />
                 <SettingsItem 
                     icon="star-outline" 
@@ -274,6 +326,13 @@ export default function SettingsScreen({ navigation }) {
                     <Text style={styles.versionText}>Version 1.0.0</Text>
                 </View>
             </ScrollView>
+
+            <Toast
+                message={toast.message}
+                visible={toast.visible}
+                type={toast.type}
+                onHide={() => setToast(prev => ({ ...prev, visible: false }))}
+            />
         </SafeAreaView>
     );
 }
@@ -333,7 +392,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 60,
     },
     logoutContainer: {
         marginTop: 40,

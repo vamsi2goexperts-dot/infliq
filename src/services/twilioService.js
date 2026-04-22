@@ -1,8 +1,9 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Alert } from 'react-native';
+import { API_BASE_URL } from '../utils/constants';
 
-const API_URL = 'https://backendapi-h6ch.onrender.com/api';
+const API_URL = `${API_BASE_URL}/api`;
 
 class TwilioService {
     async getToken(roomName) {

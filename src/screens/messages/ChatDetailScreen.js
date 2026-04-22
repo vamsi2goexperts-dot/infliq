@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 50,
+        paddingTop: 10,
         paddingBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.lightGray,

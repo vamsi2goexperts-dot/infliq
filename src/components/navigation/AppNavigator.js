@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../utils/constants';
 import { navigationRef } from '../../services/navigationService';
 
@@ -23,6 +24,7 @@ import SearchScreen from '../../screens/search/SearchScreenV2';
 import CallScreen from '../../screens/messages/CallScreen';
 import SettingsScreen from '../../screens/profile/SettingsScreen';
 import SettingsDetailScreen from '../../screens/profile/SettingsDetailScreen';
+import DeleteAccountScreen from '../../screens/profile/DeleteAccountScreen';
 import CreateSheet from '../CreateSheet';
 
 import { useAuth } from '../../context/AuthContext';
@@ -121,6 +123,7 @@ function BottomTabs() {
 export default function AppNavigator() {
     const { user, loading } = useAuth();
     const [createVisible, setCreateVisible] = React.useState(false);
+    const insets = useSafeAreaInsets();
 
     if (loading) {
         return null; // Or loading screen
@@ -145,9 +148,9 @@ export default function AppNavigator() {
                                             tabBarStyle: {
                                                 backgroundColor: COLORS.white,
                                                 borderTopWidth: 0,
-                                                height: 80,
-                                                paddingBottom: 10,
-                                                paddingTop: 10,
+                                                height: 62 + insets.bottom,
+                                                paddingBottom: Math.max(insets.bottom, 6),
+                                                paddingTop: 8,
                                                 elevation: 10,
                                                 shadowColor: '#000',
                                                 shadowOffset: { width: 0, height: -2 },
@@ -156,6 +159,7 @@ export default function AppNavigator() {
                                                 borderTopLeftRadius: 30,
                                                 borderTopRightRadius: 30,
                                                 position: 'absolute', // Ensures rounded corners are visible
+                                                bottom: 0,
                                             },
                                             tabBarShowLabel: false,
                                             tabBarActiveTintColor: COLORS.black,
@@ -234,6 +238,7 @@ export default function AppNavigator() {
                         <Stack.Screen name="CallScreen" component={CallScreen} />
                         <Stack.Screen name="Settings" component={SettingsScreen} />
                         <Stack.Screen name="SettingsDetail" component={SettingsDetailScreen} />
+                        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
                     </>
                 )}
             </Stack.Navigator>

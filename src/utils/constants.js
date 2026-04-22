@@ -21,8 +21,8 @@ export const COLORS = {
     purple: '#9370DB'
 };
 
-// Production backend URL (Render deployment)
-export const API_BASE_URL = 'https://backendapi-h6ch.onrender.com';
+export const API_BASE_URL = 'https://infliq.onrender.com';
+export const API_HEALTH_URL = `${API_BASE_URL}/health`;
 
 export const API_ENDPOINTS = {
     AUTH: `${API_BASE_URL}/api/auth`,

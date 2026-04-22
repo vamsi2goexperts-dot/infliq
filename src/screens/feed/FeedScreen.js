@@ -35,18 +35,78 @@ const MOCK_STORIES = [
 ];
 
 // --- Mock Data for Feed Posts ---
-const STATIC_POST = {
-    _id: 'post-1',
-    user: {
-        _id: 'u1',
-        name: 'ashwadh',
-        profilePicture: 'https://randomuser.me/api/portraits/men/32.jpg',
-        location: 'Virginia, USA'
+const STATIC_POSTS = [
+    {
+        _id: 'post-1',
+        userId: {
+            _id: 'u1',
+            name: 'Aarav Mehta',
+            profilePicture: 'https://randomuser.me/api/portraits/men/32.jpg',
+            location: 'Mumbai, India'
+        },
+        mediaUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        content: 'Sunset sessions, city lights, and a little bit of chaos in between.',
+        likes: ['u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9'],
+        comments: [{}, {}, {}],
+        createdAt: '2026-03-31T17:30:00.000Z'
     },
-    mediaUrl: 'https://images.unsplash.com/photo-1583391733975-203602751711?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', // Saree visual similar to screenshot
-    likes: 1243,
-    comments: 45,
-    timestamp: '2h ago'
+    {
+        _id: 'post-2',
+        userId: {
+            _id: 'u2',
+            name: 'Maya Kapoor',
+            profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg',
+            location: 'Bengaluru, India'
+        },
+        mediaUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        content: 'Working on fresh campaign concepts for creator launches this week.',
+        likes: ['u1', 'u3', 'u4', 'u10', 'u11', 'u12'],
+        comments: [{}, {}],
+        createdAt: '2026-03-31T11:15:00.000Z'
+    },
+    {
+        _id: 'post-3',
+        userId: {
+            _id: 'u3',
+            name: 'Rohan Verma',
+            profilePicture: 'https://randomuser.me/api/portraits/men/75.jpg',
+            location: 'Hyderabad, India'
+        },
+        mediaUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        content: 'Weekend ride with the crew. Good roads, better stories.',
+        likes: ['u1', 'u2', 'u4', 'u5', 'u6'],
+        comments: [{}],
+        createdAt: '2026-03-30T08:45:00.000Z'
+    }
+];
+
+const ResilientImage = ({ uri, style, fallbackIcon = 'person', fallbackLabel = null, imageMode = 'cover' }) => {
+    const [failed, setFailed] = useState(false);
+    const flattenedStyle = StyleSheet.flatten(style) || {};
+    const fallbackSize = typeof flattenedStyle.width === 'number'
+        ? Math.min(flattenedStyle.width * 0.45, 44)
+        : 28;
+
+    if (!uri || failed) {
+        return (
+            <View style={[style, styles.imageFallback]}>
+                <Ionicons name={fallbackIcon} size={fallbackSize} color={COLORS.mediumGray} />
+                {fallbackLabel ? <Text style={styles.imageFallbackLabel}>{fallbackLabel}</Text> : null}
+            </View>
+        );
+    }
+
+    return (
+        <Image
+            source={{ uri }}
+            style={style}
+            resizeMode={imageMode}
+            onError={() => setFailed(true)}
+        />
+    );
 };
 
 const StoriesRail = () => {
@@ -68,7 +128,7 @@ const StoriesRail = () => {
             <View style={styles.storyRingContainer}>
                 {item.isUser ? (
                     <View style={[styles.storyRing, { borderColor: COLORS.lightGray, borderWidth: 2 }]}>
-                        <Image source={{ uri: item.image }} style={styles.storyAvatar} />
+                        <ResilientImage uri={item.image} style={styles.storyAvatar} fallbackIcon="person" />
                         <View style={styles.addStoryBadge}>
                             <Ionicons name="add" size={12} color={COLORS.white} />
                         </View>
@@ -79,7 +139,7 @@ const StoriesRail = () => {
                         style={styles.storyGradient}
                     >
                         <View style={styles.storyRingInner}>
-                            <Image source={{ uri: item.image }} style={styles.storyAvatar} />
+                            <ResilientImage uri={item.image} style={styles.storyAvatar} fallbackIcon="person" />
                         </View>
                     </LinearGradient>
                 )}
@@ -228,9 +288,10 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
                         }
                     }}
                 >
-                    <Image
-                        source={{ uri: postUser.profilePicture || 'https://via.placeholder.com/50' }}
+                    <ResilientImage
+                        uri={postUser.profilePicture}
                         style={styles.postAvatar}
+                        fallbackIcon="person"
                     />
                     <View>
                         <Text style={styles.postUsername}>{postUser.name || 'Unknown User'}</Text>
@@ -294,10 +355,11 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
                         )}
                     </>
                 ) : (
-                    <Image
-                        source={{ uri: item.mediaUrl }}
+                    <ResilientImage
+                        uri={item.mediaUrl}
                         style={styles.postImage}
-                        resizeMode="cover"
+                        fallbackIcon="image-outline"
+                        fallbackLabel="Image unavailable"
                     />
                 )}
 
@@ -413,17 +475,22 @@ export default function FeedScreen({ navigation }) {
         try {
             const data = await postService.getFeed(pageToLoad, 10);
             const newPosts = data.posts || [];
+            const postsToUse = newPosts.length > 0 ? newPosts : STATIC_POSTS;
 
             if (isRefreshing || pageToLoad === 1) {
-                setPosts(newPosts);
+                setPosts(postsToUse);
             } else {
-                setPosts(prev => [...prev, ...newPosts]);
+                setPosts(prev => [...prev, ...postsToUse]);
             }
 
-            setHasMore(data.hasMore || false);
+            setHasMore(newPosts.length > 0 ? (data.hasMore || false) : false);
             setPage(pageToLoad);
         } catch (error) {
             console.error('Error fetching feed:', error);
+            if (pageToLoad === 1) {
+                setPosts(STATIC_POSTS);
+                setHasMore(false);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -504,9 +571,10 @@ export default function FeedScreen({ navigation }) {
                         <Ionicons name="search" size={20} color={COLORS.royalBlue} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-                        <Image
-                            source={{ uri: user?.profilePicture || 'https://via.placeholder.com/50' }}
+                        <ResilientImage
+                            uri={user?.profilePicture}
                             style={styles.headerAvatar}
+                            fallbackIcon="person"
                         />
                     </TouchableOpacity>
                 </View>
@@ -552,7 +620,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 50,
+        paddingTop: 10,
         paddingBottom: 10,
         backgroundColor: COLORS.white,
     },
@@ -561,6 +629,27 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: COLORS.black,
         fontFamily: Platform.OS === 'ios' ? 'Arial' : 'Roboto' // Simple bold sans
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    iconButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F5FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 0
+    },
+    searchButton: {
+        marginRight: 10
+    },
+    headerAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20
     },
     // Stories
     storiesContainer: {
@@ -608,6 +697,19 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         borderWidth: 1,
         borderColor: '#f0f0f0'
+    },
+    imageFallback: {
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden'
+    },
+    imageFallbackLabel: {
+        marginTop: 6,
+        fontSize: 11,
+        color: COLORS.darkGray,
+        fontWeight: '600',
+        textAlign: 'center'
     },
     addStoryBadge: {
         position: 'absolute',

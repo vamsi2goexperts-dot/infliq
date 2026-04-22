@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 // Create axios instance
 const api = axios.create({
     baseURL: API_ENDPOINTS.AUTH.replace('/api/auth', ''),
-    timeout: 30000, // Increased for media uploads
+    timeout: 60000,
 });
 
 let authToken = null;
@@ -40,14 +40,19 @@ export const setUnauthorizedCallback = (callback) => {
     unauthorizedCallback = callback;
 };
 
+const clearAuthSession = async () => {
+    authToken = null;
+    await AsyncStorage.removeItem('authToken');
+    await AsyncStorage.removeItem('userId');
+};
+
 // Response interceptor for error handling
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            console.log('🛑 401 Unauthorized detected - clearing session');
-            await AsyncStorage.removeItem('authToken');
-            await AsyncStorage.removeItem('userId');
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            console.log(`🛑 ${error.response.status} Auth error detected - clearing session`);
+            await clearAuthSession();
             if (unauthorizedCallback) {
                 unauthorizedCallback();
             }
