@@ -86,9 +86,9 @@ export default function SettingsScreen({ navigation }) {
             >
                 {/* ACCOUNT SECTION */}
                 <SectionHeader title="ACCOUNT" />
-                <SettingsItem 
-                    icon="list-outline" 
-                    label="Your Activity" 
+                <SettingsItem
+                    icon="list-outline"
+                    label="Your Activity"
                     onPress={() => navigateToDetail("Your Activity", [
                         {
                             title: "Time Spent",
@@ -107,9 +107,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="lock-closed-outline" 
-                    label="Privacy and Safety" 
+                <SettingsItem
+                    icon="lock-closed-outline"
+                    label="Privacy and Safety"
                     onPress={() => navigateToDetail("Privacy and Safety", [
                         {
                             title: "Account Privacy",
@@ -128,9 +128,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="notifications-outline" 
-                    label="Notification Settings" 
+                <SettingsItem
+                    icon="notifications-outline"
+                    label="Notification Settings"
                     onPress={() => navigateToDetail("Notification Settings", [
                         {
                             title: "Push Notifications",
@@ -149,9 +149,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="person-outline" 
-                    label="Account Management" 
+                <SettingsItem
+                    icon="person-outline"
+                    label="Account Management"
                     onPress={() => navigateToDetail("Account Management", [
                         {
                             title: "Personal Information",
@@ -164,7 +164,7 @@ export default function SettingsScreen({ navigation }) {
                         {
                             title: "Account Actions",
                             items: [
-                                { label: "Deactivate Account", value: "Temporarily disabled", type: "text" },
+                             //   { label: "Deactivate Account", value: "Temporarily disabled", type: "text" },
                                 { label: "Delete Account", type: "arrow" }
                             ]
                         }
@@ -173,9 +173,9 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* CHATS SECTION */}
                 <SectionHeader title="CHATS" />
-                <SettingsItem 
-                    icon="help-circle-outline" 
-                    label="Chats Settings" 
+                <SettingsItem
+                    icon="help-circle-outline"
+                    label="Chats Settings"
                     onPress={() => navigateToDetail("Chats Settings", [
                         {
                             title: "Display",
@@ -196,9 +196,9 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* SUPPORT SECTION */}
                 <SectionHeader title="SUPPORT" />
-                <SettingsItem 
-                    icon="warning-outline" 
-                    label="Report a Problem" 
+                <SettingsItem
+                    icon="warning-outline"
+                    label="Report a Problem"
                     onPress={() => navigation.navigate('SettingsDetail', {
                         title: 'Report a Problem',
                         articleContent: [
@@ -245,9 +245,9 @@ export default function SettingsScreen({ navigation }) {
                         ]
                     })}
                 />
-                <SettingsItem 
-                    icon="star-outline" 
-                    label="Infliq Verified" 
+                <SettingsItem
+                    icon="star-outline"
+                    label="Infliq Verified"
                     onPress={() => navigateToDetail("Infliq Verified", [
                         {
                             title: "Verification Status",
@@ -258,9 +258,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="globe-outline" 
-                    label="Languages" 
+                <SettingsItem
+                    icon="globe-outline"
+                    label="Languages"
                     onPress={() => navigateToDetail("Languages", [
                         {
                             title: "App Language",
@@ -275,9 +275,9 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* ABOUT SECTION */}
                 <SectionHeader title="ABOUT" />
-                <SettingsItem 
-                    icon="information-circle-outline" 
-                    label="About Infliq" 
+                <SettingsItem
+                    icon="information-circle-outline"
+                    label="About Infliq"
                     showArrow={true}
                     onPress={() => navigateToDetail("About Infliq", [
                         {
@@ -289,9 +289,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="document-text-outline" 
-                    label="Terms of Service" 
+                <SettingsItem
+                    icon="document-text-outline"
+                    label="Terms of Service"
                     showArrow={true}
                     onPress={() => navigateToDetail("Terms of Service", [
                         {
@@ -302,9 +302,9 @@ export default function SettingsScreen({ navigation }) {
                         }
                     ])}
                 />
-                <SettingsItem 
-                    icon="shield-checkmark-outline" 
-                    label="Privacy Policy" 
+                <SettingsItem
+                    icon="shield-checkmark-outline"
+                    label="Privacy Policy"
                     showArrow={true}
                     onPress={() => navigateToDetail("Privacy Policy", [
                         {

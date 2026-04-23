@@ -12,7 +12,9 @@ import {
     Alert,
     Platform,
     StatusBar,
-    KeyboardAvoidingView
+    KeyboardAvoidingView,
+    Modal,
+    TouchableWithoutFeedback
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,10 +24,15 @@ import { userService, mediaService } from '../../services/api';
 export default function EditProfileScreen({ route, navigation }) {
     const { profile } = route.params;
     const [name, setName] = useState(profile.name || '');
+    const [email, setEmail] = useState(profile.email || '');
+    const [gender, setGender] = useState(profile.gender || '');
     const [bio, setBio] = useState(profile.bio || '');
     const [profilePicture, setProfilePicture] = useState(profile.profilePicture || '');
     const [localImageUri, setLocalImageUri] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [showGenderModal, setShowGenderModal] = useState(false);
+
+    const genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -64,6 +71,8 @@ export default function EditProfileScreen({ route, navigation }) {
 
             await userService.updateProfile(profile._id, {
                 name,
+                email,
+                gender,
                 bio,
                 profilePicture: finalImageUrl
             });
@@ -180,13 +189,76 @@ export default function EditProfileScreen({ route, navigation }) {
                             <Text style={styles.charCount}>{bio.length}/150</Text>
                         </View>
 
-                        {/* Additional Settings Link */}
-                        <TouchableOpacity style={styles.settingsLink}>
-                            <Text style={styles.settingsLinkText}>Personal information settings</Text>
-                            <Ionicons name="chevron-forward" size={20} color={COLORS.royalBlue} />
-                        </TouchableOpacity>
+                        {/* Email Input */}
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.label}>Email</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="mail-outline" size={20} color={COLORS.darkGray} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder="Enter your email"
+                                    placeholderTextColor={COLORS.mediumGray}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Gender Dropdown */}
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.label}>Gender</Text>
+                            <TouchableOpacity 
+                                style={styles.inputContainer} 
+                                onPress={() => setShowGenderModal(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="transgender-outline" size={20} color={COLORS.darkGray} style={styles.inputIcon} />
+                                <Text style={[styles.input, !gender && { color: COLORS.mediumGray }]}>
+                                    {gender || 'Select gender'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={18} color={COLORS.mediumGray} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </ScrollView>
+
+                {/* Gender Selection Modal */}
+                <Modal
+                    visible={showGenderModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowGenderModal(false)}
+                >
+                    <TouchableWithoutFeedback onPress={() => setShowGenderModal(false)}>
+                        <View style={styles.modalOverlay}>
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>Select Gender</Text>
+                                {genderOptions.map((option) => (
+                                    <TouchableOpacity
+                                        key={option}
+                                        style={styles.optionButton}
+                                        onPress={() => {
+                                            setGender(option);
+                                            setShowGenderModal(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.optionText,
+                                            gender === option && styles.selectedOptionText
+                                        ]}>
+                                            {option}
+                                        </Text>
+                                        {gender === option && (
+                                            <Ionicons name="checkmark" size={20} color={COLORS.royalBlue} />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -205,7 +277,6 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: 15,
         backgroundColor: COLORS.white,
-        // Removed borderBottom to make it cleaner
     },
     cancelText: {
         fontSize: 16,
@@ -287,11 +358,11 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F7F8FA', // Light gray background
+        backgroundColor: '#F7F8FA',
         borderRadius: 12,
         paddingHorizontal: 15,
         borderWidth: 1,
-        borderColor: '#EFEFEF', // Subtle border
+        borderColor: '#EFEFEF',
         height: 50,
     },
     textAreaContainer: {
@@ -306,6 +377,8 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: COLORS.black,
+        textAlignVertical: 'center',
+        lineHeight: 20,
     },
     disabledInput: {
         backgroundColor: '#F0F0F0',
@@ -328,19 +401,41 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginRight: 4,
     },
-    settingsLink: {
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 30,
+    },
+    modalContent: {
+        backgroundColor: COLORS.white,
+        borderRadius: 20,
+        padding: 20,
+        width: '100%',
+        maxWidth: 400,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.black,
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    optionButton: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 15,
-        paddingHorizontal: 15,
-        backgroundColor: '#F7F8FA',
-        borderRadius: 12,
-        marginTop: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
     },
-    settingsLinkText: {
-        fontSize: 15,
+    optionText: {
+        fontSize: 16,
+        color: COLORS.black,
+    },
+    selectedOptionText: {
         color: COLORS.royalBlue,
         fontWeight: '600',
-    },
+    }
 });
