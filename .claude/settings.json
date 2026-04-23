@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree *)",
+      "Bash(git commit -m ' *)",
+      "Bash(ipconfig)",
+      "Bash(netstat -ano)",
+      "Bash(node server.js)",
+      "Bash(npx expo *)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"const p = require\\('ffmpeg-static'\\); console.log\\('ffmpeg-static path:', p\\);\")",
+      "Bash(node -e ' *)"
+    ]
+  }
+}
