@@ -405,10 +405,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         width: '100%',
         paddingVertical: 15,
-        backgroundColor: '#fff',
+        backgroundColor: '#FFF5F5',
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#fee2e2',
+        borderColor: '#FECACA',
     },
     logoutText: {
         color: COLORS.red,

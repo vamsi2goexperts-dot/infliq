@@ -22,6 +22,7 @@ import { userService, postService, chatService } from '../../services/api';
 import CallButton from '../../components/calls/CallButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
+import VideoThumbnail from '../../components/VideoThumbnail';
 
 const safeUri = (uri) => {
     if (!uri) return null;
@@ -33,7 +34,6 @@ const safeUri = (uri) => {
 const GridImage = ({ uri, style }) => {
     const [failed, setFailed] = useState(false);
     const safe = safeUri(uri);
-    console.log('[GridImage] uri:', safe);
     if (!safe || failed) {
         return (
             <View style={[style, styles.mediaFallback]}>
@@ -134,7 +134,6 @@ export default function ProfileScreen({ route, navigation }) {
             const targetUserId = userId || myUserId;
             const response = await postService.getUserPosts(targetUserId);
             const posts = response.posts || [];
-            console.log('[ProfileScreen] mediaUrls:', posts.map(p => p.mediaUrl));
             setPosts(posts);
         } catch (error) {
             console.error('Failed to load posts:', error);
@@ -255,20 +254,7 @@ export default function ProfileScreen({ route, navigation }) {
                 onPress={() => navigation.navigate('PostDetail', { post: item })}
             >
                 {isVideo ? (
-                    mediaUri ? (
-                        <Video
-                            style={styles.gridImage}
-                            source={{ uri: mediaUri }}
-                            resizeMode="cover"
-                            shouldPlay={false}
-                            isMuted={true}
-                            initialStatus={{ positionMillis: 100 }}
-                        />
-                    ) : (
-                        <View style={[styles.gridImage, styles.mediaFallback]}>
-                            <Ionicons name="videocam-outline" size={24} color={COLORS.mediumGray} />
-                        </View>
-                    )
+                    <VideoThumbnail uri={mediaUri} style={styles.gridImage} />
                 ) : (
                     <GridImage uri={item.mediaUrl} style={styles.gridImage} />
                 )}
@@ -801,6 +787,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: COLORS.lightGray,
+    },
+    mediaFallbackText: {
+        marginTop: 6,
+        fontSize: 11,
+        fontWeight: '600',
+        color: COLORS.darkGray,
     },
     videoPlaceholder: {
         backgroundColor: '#333',

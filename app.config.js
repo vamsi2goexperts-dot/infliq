@@ -24,7 +24,7 @@ const backendEnvPath = path.resolve(__dirname, '..', 'backend', '.env');
 const googleApiKey =
     process.env.GOOGLE_API_KEY ||
     readEnvValue(backendEnvPath, 'GOOGLE_API_KEY') ||
-    'PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE';
+    'AIzaSyAKHbbax8rKjSNi0jO_yOPY5zhnm93whcg';
 
 module.exports = {
     ...appJson,

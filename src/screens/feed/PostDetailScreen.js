@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from 'expo-av';
 import { COLORS } from '../../utils/constants';
-import { postService } from '../../services/api';
+import { postService, userService } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -93,7 +93,51 @@ export default function PostDetailScreen({ route, navigation }) {
                 'Post Options',
                 null,
                 [
-                    { text: 'Report', onPress: () => Alert.alert('Reported', 'Post has been reported') },
+                    {
+                        text: 'Report',
+                        onPress: async () => {
+                            try {
+                                await postService.reportPost(post._id, {
+                                    reason: 'inappropriate_content',
+                                    details: 'Reported from post detail'
+                                });
+                                Alert.alert('Reported', 'Thanks. We will review this post.');
+                            } catch (error) {
+                                console.error('Report error:', error);
+                                Alert.alert('Error', 'Failed to report post');
+                            }
+                        }
+                    },
+                    {
+                        text: 'Block User',
+                        style: 'destructive',
+                        onPress: () => {
+                            Alert.alert(
+                                'Block User',
+                                'Blocking this user will remove their content from your feed immediately.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Block',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            try {
+                                                await userService.blockUser(post.userId?._id, {
+                                                    reason: 'abusive_user',
+                                                    details: 'Blocked from post detail'
+                                                });
+                                                Alert.alert('Blocked', 'The user has been blocked.');
+                                                navigation.goBack();
+                                            } catch (error) {
+                                                console.error('Block error:', error);
+                                                Alert.alert('Error', 'Failed to block user');
+                                            }
+                                        }
+                                    }
+                                ]
+                            );
+                        }
+                    },
                     { text: 'Cancel', style: 'cancel' }
                 ]
             );

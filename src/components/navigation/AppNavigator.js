@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -25,6 +26,7 @@ import CallScreen from '../../screens/messages/CallScreen';
 import SettingsScreen from '../../screens/profile/SettingsScreen';
 import SettingsDetailScreen from '../../screens/profile/SettingsDetailScreen';
 import DeleteAccountScreen from '../../screens/profile/DeleteAccountScreen';
+import TermsConsentScreen from '../../screens/legal/TermsConsentScreen';
 import CreateSheet from '../CreateSheet';
 
 import { useAuth } from '../../context/AuthContext';
@@ -123,10 +125,42 @@ function BottomTabs() {
 export default function AppNavigator() {
     const { user, loading } = useAuth();
     const [createVisible, setCreateVisible] = React.useState(false);
+    const [termsAccepted, setTermsAccepted] = React.useState(null);
     const insets = useSafeAreaInsets();
+
+    React.useEffect(() => {
+        let mounted = true;
+
+        const loadTermsState = async () => {
+            try {
+                const accepted = await AsyncStorage.getItem('ugc_terms_accepted_v1');
+                if (mounted) {
+                    setTermsAccepted(accepted === 'true');
+                }
+            } catch (error) {
+                if (mounted) {
+                    setTermsAccepted(false);
+                }
+            }
+        };
+
+        loadTermsState();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     if (loading) {
         return null; // Or loading screen
+    }
+
+    if (user && termsAccepted === null) {
+        return null;
+    }
+
+    if (user && termsAccepted === false) {
+        return <TermsConsentScreen onAccepted={() => setTermsAccepted(true)} />;
     }
 
     return (

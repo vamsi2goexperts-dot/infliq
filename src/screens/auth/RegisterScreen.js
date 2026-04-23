@@ -92,7 +92,11 @@ export default function RegisterScreen({ navigation }) {
         try {
             // Update profile with Name (and Email)
             if (userId) {
-                await userService.updateProfile(userId, { name, email });
+                const profileUpdate = { name };
+                if (email.trim()) {
+                    profileUpdate.email = email.trim();
+                }
+                await userService.updateProfile(userId, profileUpdate);
             }
             // Manually set session to trigger navigation to avoid re-verifying OTP
             if (verifiedUser && verifiedToken) {

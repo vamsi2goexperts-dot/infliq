@@ -14,6 +14,7 @@ export const COLORS = {
     darkGray: '#4A5568',
 
     // Accents
+    red: '#EF4444',
     green: '#00FF00',
     yellow: '#FFD700',
     orange: '#FF8C00',
@@ -22,6 +23,8 @@ export const COLORS = {
 };
 
 export const API_BASE_URL = 'https://infliq.onrender.com';
+// export const API_BASE_URL = 'http://10.0.2.2:3000'; // Android Emulator
+// export const API_BASE_URL = 'http://192.168.0.42:3000'; // Physical device (PC LAN IP)
 export const API_HEALTH_URL = `${API_BASE_URL}/health`;
 
 export const API_ENDPOINTS = {

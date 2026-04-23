@@ -7,12 +7,11 @@ import {
     Dimensions,
     TouchableOpacity,
     Image,
-    ActivityIndicator,
-    Platform
+    ActivityIndicator
 } from 'react-native';
 import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../utils/constants';
 import { postService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -27,42 +26,16 @@ const safeVideoUri = (uri) => {
 
 const ReelItem = ({ item, isVisible, nearVisible, index }) => {
     const { user } = useAuth();
-    const videoRef = useRef(null);
-    const [status, setStatus] = useState({});
     const [videoError, setVideoError] = useState(false);
     const [isLiked, setIsLiked] = useState(item.likes?.includes(user?._id));
     const [likesCount, setLikesCount] = useState(item.likes?.length || 0);
     const lastTapRef = useRef(null);
     const videoUri = safeVideoUri(item.mediaUrl);
 
-    // Animation states
     const heartScale = useRef(new Animated.Value(0)).current;
     const heartOpacity = useRef(new Animated.Value(0)).current;
     const isFocused = useIsFocused();
 
-    // Imperative Playback Control
-    useEffect(() => {
-        const itemActive = isVisible && isFocused && !!videoUri && !videoError;
-        if (videoRef.current) {
-            if (itemActive) {
-                console.log(`▶️ PLAY request for Index ${index}`);
-                videoRef.current.setIsMutedAsync(false).catch(() => { });
-                videoRef.current.playAsync().catch(e => {
-                    if (e.message && (e.message.includes('interrupted') || e.message.includes('removed'))) return;
-                    console.log('Play error:', e);
-                });
-            } else {
-                videoRef.current.pauseAsync().catch(() => { });
-            }
-        }
-
-        return () => {
-            if (videoRef.current) {
-                console.log(`Cleanup for Index ${index}`);
-                videoRef.current.pauseAsync().catch(() => { });
-            }
-        };
-    }, [isVisible, isFocused, index, videoUri, videoError]);
 
     const animateHeart = () => {
         heartScale.setValue(0.5);
@@ -124,22 +97,24 @@ const ReelItem = ({ item, isVisible, nearVisible, index }) => {
                 onPress={handleDoubleTap}
                 style={StyleSheet.absoluteFill}
             >
-                {nearVisible ? (
+                {nearVisible && isFocused ? (
                     videoUri && !videoError ? (
                         <Video
-                            ref={videoRef}
                             style={styles.video}
                             source={{ uri: videoUri }}
                             resizeMode="cover"
-                            isLooping
-                            shouldPlay={false}
+                            isLooping={false}
+                            shouldPlay={isVisible}
                             isMuted={false}
+                            onError={(error) => {
+                                console.warn(`[ReelItem ${index}] Video error:`, error);
+                                setVideoError(true);
+                            }}
                             onPlaybackStatusUpdate={s => {
                                 if (s.error && !videoError) {
                                     console.warn(`[ReelItem ${index}] Playback error:`, s.error);
                                     setVideoError(true);
                                 }
-                                setStatus(() => s);
                             }}
                         />
                     ) : (
@@ -205,6 +180,8 @@ const ReelItem = ({ item, isVisible, nearVisible, index }) => {
 
 
 export default function ReelsScreen() {
+    const navigation = useNavigation();
+    const isFocused = useIsFocused();
     const [reels, setReels] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -216,6 +193,31 @@ export default function ReelsScreen() {
     useEffect(() => {
         loadReels();
     }, []);
+
+    useEffect(() => {
+        const defaultTabBarStyle = {
+            backgroundColor: COLORS.white,
+            borderTopWidth: 0,
+            height: 62,
+            paddingBottom: 8,
+            paddingTop: 8,
+            elevation: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            borderTopLeftRadius: 30,
+            borderTopRightRadius: 30,
+            position: 'absolute',
+            bottom: 0,
+        };
+
+        navigation.setOptions({
+            tabBarStyle: isFocused
+                ? { ...defaultTabBarStyle, display: 'none' }
+                : defaultTabBarStyle
+        });
+    }, [isFocused, navigation]);
 
     const loadReels = async (pageToLoad = 1) => {
         if (pageToLoad > 1) setLoadingMore(true);
@@ -264,6 +266,13 @@ export default function ReelsScreen() {
 
     return (
         <View style={styles.container} onLayout={onLayout}>
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.navigate('Feed')}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+                <Ionicons name="chevron-back" size={28} color={COLORS.white} />
+            </TouchableOpacity>
             <FlatList
                 data={reels.length > 0 ? reels : [{ _id: 'dummy', content: 'Sample Reel' }]}
                 renderItem={({ item, index }) => (
@@ -271,7 +280,7 @@ export default function ReelsScreen() {
                         <ReelItem
                             item={item}
                             isVisible={index === visibleIndex}
-                            nearVisible={Math.abs(index - visibleIndex) <= 1}
+                            nearVisible={index === visibleIndex}
                             index={index}
                         />
                     </View>
@@ -292,8 +301,8 @@ export default function ReelsScreen() {
                 }}
                 scrollEventThrottle={16}
                 extraData={visibleIndex}
-                removeClippedSubviews={false}
-                windowSize={3}
+                removeClippedSubviews={true}
+                windowSize={2}
                 initialNumToRender={1}
                 maxToRenderPerBatch={2}
                 onEndReached={handleLoadMore}
@@ -318,6 +327,18 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.black,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    backButton: {
+        position: 'absolute',
+        top: 14,
+        left: 12,
+        zIndex: 20,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     reelContainer: {
         width: SCREEN_WIDTH,

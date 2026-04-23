@@ -10,17 +10,24 @@ import {
     ScrollView,
     ActivityIndicator
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, UrlTile, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../utils/constants';
 import { userService } from '../../services/api';
 
+const safeUri = (uri) => {
+    if (typeof uri !== 'string') return null;
+    const trimmed = uri.trim();
+    if (!trimmed) return null;
+    return trimmed.startsWith('http://') ? trimmed.replace('http://', 'https://') : trimmed;
+};
+
 const CATEGORIES = [
     { id: 'verified', label: 'Verified Voice', icon: 'checkmark-circle' },
     { id: 'global', label: 'Global Pulse', icon: 'globe' },
-    { id: 'plant', label: 'Ghost Note', icon: 'leaf' },
+    { id: 'ghost', label: 'Ghost Note', icon: 'leaf' },
 ];
 
 const DEFAULT_REGION = {
@@ -28,13 +35,6 @@ const DEFAULT_REGION = {
     longitude: 77.209,
     latitudeDelta: 0.9,
     longitudeDelta: 0.9,
-};
-
-const safeUri = (uri) => {
-    if (typeof uri !== 'string') return null;
-    const trimmed = uri.trim();
-    if (!trimmed) return null;
-    return trimmed.startsWith('http://') ? trimmed.replace('http://', 'https://') : trimmed;
 };
 
 const getBadgeColor = (badge) => {
@@ -65,7 +65,9 @@ const getBadgeIcon = (badge) => {
 
 const normalizeUserLocation = (user, fallbackIndex = 0) => {
     const coordinates = user.location?.coordinates;
-    const hasCoordinates = Array.isArray(coordinates) && coordinates.length >= 2;
+    const hasCoordinates = Array.isArray(coordinates) && 
+                          coordinates.length >= 2 && 
+                          (coordinates[0] !== 0 || coordinates[1] !== 0);
 
     if (hasCoordinates) {
         return {
@@ -85,7 +87,6 @@ const normalizeUserLocation = (user, fallbackIndex = 0) => {
 
 export default function MapDiscoveryScreen({ navigation }) {
     const mapRef = useRef(null);
-
     const [selectedCategory, setSelectedCategory] = useState('verified');
     const [selectedUser, setSelectedUser] = useState(null);
     const [currentRegion, setCurrentRegion] = useState(DEFAULT_REGION);
@@ -93,6 +94,7 @@ export default function MapDiscoveryScreen({ navigation }) {
     const [loadingLocation, setLoadingLocation] = useState(true);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [error, setError] = useState(null);
+    const [showStaticScene, setShowStaticScene] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -107,9 +109,12 @@ export default function MapDiscoveryScreen({ navigation }) {
                     return;
                 }
 
-                const position = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
-                });
+                const position = await Promise.race([
+                    Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Location timeout')), 8000))
+                ]);
 
                 if (!mounted) return;
 
@@ -139,12 +144,20 @@ export default function MapDiscoveryScreen({ navigation }) {
 
     useEffect(() => {
         let mounted = true;
+        let fallbackTimer = null;
 
         const loadUsers = async () => {
             if (!currentRegion) return;
 
             setLoadingUsers(true);
             setError(null);
+            setShowStaticScene(false);
+
+            fallbackTimer = setTimeout(() => {
+                if (mounted) {
+                    setShowStaticScene(true);
+                }
+            }, 10000);
 
             try {
                 const response = await userService.getNearbyUsers(
@@ -160,6 +173,9 @@ export default function MapDiscoveryScreen({ navigation }) {
                 if (!mounted) return;
 
                 setUsers(mappedUsers);
+                if (mappedUsers.length > 0) {
+                    setShowStaticScene(false);
+                }
                 setSelectedUser((current) => {
                     if (current && mappedUsers.some((item) => item._id === current._id)) {
                         return mappedUsers.find((item) => item._id === current._id);
@@ -167,22 +183,17 @@ export default function MapDiscoveryScreen({ navigation }) {
                     return mappedUsers[0] || null;
                 });
 
-                if (mappedUsers.length > 0 && mapRef.current) {
-                    mapRef.current.animateToRegion(
-                        {
-                            latitude: mappedUsers[0].latitude,
-                            longitude: mappedUsers[0].longitude,
-                            latitudeDelta: 0.6,
-                            longitudeDelta: 0.6,
-                        },
-                        450
-                    );
-                }
+                // Removed automatic animation to first user to prevent "flying to ocean" bugs
+                // Instead, the map stays centered on the user's own location.
             } catch (err) {
                 if (!mounted) return;
                 setUsers([]);
                 setError('Unable to load nearby users right now.');
+                setShowStaticScene(true);
             } finally {
+                if (fallbackTimer) {
+                    clearTimeout(fallbackTimer);
+                }
                 if (mounted) setLoadingUsers(false);
             }
         };
@@ -193,12 +204,11 @@ export default function MapDiscoveryScreen({ navigation }) {
 
         return () => {
             mounted = false;
+            if (fallbackTimer) {
+                clearTimeout(fallbackTimer);
+            }
         };
     }, [currentRegion, selectedCategory]);
-
-    const handleCategorySelect = (categoryId) => {
-        setSelectedCategory(categoryId);
-    };
 
     const renderCategoryItem = (item) => {
         const isSelected = selectedCategory === item.id;
@@ -207,7 +217,7 @@ export default function MapDiscoveryScreen({ navigation }) {
             <TouchableOpacity
                 key={item.id}
                 style={styles.categoryItem}
-                onPress={() => handleCategorySelect(item.id)}
+                onPress={() => setSelectedCategory(item.id)}
                 activeOpacity={0.8}
             >
                 {item.id === 'verified' ? (
@@ -260,15 +270,14 @@ export default function MapDiscoveryScreen({ navigation }) {
             <View style={styles.mapContainer}>
                 <MapView
                     ref={mapRef}
-                    style={styles.map}
                     provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                    style={styles.map}
                     initialRegion={currentRegion}
-                    showsCompass={false}
-                    showsPointsOfInterest={false}
-                    showsBuildings={false}
-                    showsTraffic={false}
-                    toolbarEnabled={false}
-                    rotateEnabled={false}
+                    showsUserLocation={true}
+                    showsCompass={true}
+                    showsMyLocationButton={true}
+                    showsPointsOfInterest={true}
+                    showsBuildings={true}
                     mapType="standard"
                 >
                     {users.map((item) => (
@@ -314,16 +323,16 @@ export default function MapDiscoveryScreen({ navigation }) {
                 </MapView>
 
                 <LinearGradient
-                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.3)']}
+                    colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.2)']}
                     style={StyleSheet.absoluteFillObject}
                     pointerEvents="none"
                 />
 
                 {(loadingLocation || loadingUsers) && (
                     <View style={styles.loader}>
-                        <ActivityIndicator size="large" color={COLORS.royalBlue} />
+                        <ActivityIndicator size="small" color={COLORS.royalBlue} />
                         <Text style={styles.loaderText}>
-                            {loadingLocation ? 'Finding nearby places...' : 'Loading nearby users...'}
+                            {loadingLocation ? 'Finding your location...' : 'Loading nearby users...'}
                         </Text>
                     </View>
                 )}
@@ -363,10 +372,7 @@ export default function MapDiscoveryScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.white,
-    },
+    container: { flex: 1, backgroundColor: COLORS.white },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -473,6 +479,63 @@ const styles = StyleSheet.create({
     errorText: {
         color: COLORS.white,
         fontWeight: '600',
+        textAlign: 'center',
+    },
+    staticScene: {
+        flex: 1,
+        backgroundColor: '#DEDAD1',
+        overflow: 'hidden',
+    },
+    staticSceneOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(222, 218, 209, 0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    staticSceneCard: {
+        width: '78%',
+        maxWidth: 320,
+        alignItems: 'center',
+        paddingVertical: 30,
+        paddingHorizontal: 20,
+        borderRadius: 28,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.45)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    staticSceneAvatar: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        backgroundColor: COLORS.white,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: '#DDEBFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.14,
+        shadowRadius: 14,
+        elevation: 6,
+        marginBottom: 16,
+    },
+    staticSceneTitle: {
+        color: COLORS.black,
+        fontSize: 19,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    staticSceneText: {
+        marginTop: 8,
+        color: COLORS.darkGray,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
         textAlign: 'center',
     },
     markerRing: {

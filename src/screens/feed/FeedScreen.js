@@ -8,8 +8,8 @@ import {
     StyleSheet,
     RefreshControl,
     ActivityIndicator,
+    Alert,
     Platform,
-    StatusBar,
     Dimensions,
     Animated,
     ScrollView
@@ -17,24 +17,16 @@ import {
 import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
-import { postService, userService, chatService } from '../../services/api';
+import { postService, userService, chatService, storyService, mediaService } from '../../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
+import { useIsFocused } from '@react-navigation/native';
 import Skeleton from '../../components/Skeleton';
+import StoryViewer from '../../components/StoryViewer';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
-// --- Mock Data for Stories ---
-const MOCK_STORIES = [
-    { id: 'me', name: 'Your Story', image: 'https://randomuser.me/api/portraits/women/44.jpg', isUser: true },
-    { id: 's1', name: 'elonmusk', image: 'https://upload.wikimedia.org/wikipedia/commons/3/34/Elon_Musk_Royal_Society_%28crop2%29.jpg', verified: true, hasStory: true },
-    { id: 's2', name: 'aoc', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Alexandria_Ocasio-Cortez_Official_Portrait.jpg/800px-Alexandria_Ocasio-Cortez_Official_Portrait.jpg', verified: true, hasStory: true },
-    { id: 's3', name: 'timcook', image: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/Tim_Cook_2009_headshot.jpg', verified: true, hasStory: true },
-    { id: 's4', name: 'oprah', image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/Oprah_Winfrey_in_2014.jpg', verified: true, hasStory: true },
-    { id: 's5', name: 'billgates', image: 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Bill_Gates_2017_%28cropped%29.jpg', verified: true, hasStory: true }
-];
-
-// --- Mock Data for Feed Posts ---
 const STATIC_POSTS = [
     {
         _id: 'post-1',
@@ -109,49 +101,61 @@ const ResilientImage = ({ uri, style, fallbackIcon = 'person', fallbackLabel = n
     );
 };
 
-const StoriesRail = () => {
-    const { user } = useAuth();
-
-    // Update "Your Story" with real user data
+const StoriesRail = ({ user, storyGroups = [], onAddStory, onViewStory }) => {
     const stories = [
-        {
-            id: 'me',
-            name: 'Your Story',
-            image: user?.profilePicture || 'https://via.placeholder.com/60',
-            isUser: true
-        },
-        ...MOCK_STORIES.filter(s => !s.isUser)
+        { id: 'me', isMe: true },
+        ...storyGroups.map((g, i) => ({ ...g, id: g.user._id, groupIndex: i }))
     ];
 
-    const renderStory = ({ item }) => (
-        <TouchableOpacity style={styles.storyItem}>
-            <View style={styles.storyRingContainer}>
-                {item.isUser ? (
-                    <View style={[styles.storyRing, { borderColor: COLORS.lightGray, borderWidth: 2 }]}>
-                        <ResilientImage uri={item.image} style={styles.storyAvatar} fallbackIcon="person" />
-                        <View style={styles.addStoryBadge}>
-                            <Ionicons name="add" size={12} color={COLORS.white} />
+    const renderStory = ({ item }) => {
+        if (item.isMe) {
+            return (
+                <TouchableOpacity style={styles.storyItem} onPress={onAddStory}>
+                    <View style={styles.storyRingContainer}>
+                        <View style={[styles.storyRing, { borderColor: '#dbdbdb', borderWidth: 2 }]}>
+                            <ResilientImage uri={user?.profilePicture} style={styles.storyAvatar} fallbackIcon="person" />
+                            <View style={styles.addStoryBadge}>
+                                <Ionicons name="add" size={12} color={COLORS.white} />
+                            </View>
                         </View>
                     </View>
-                ) : (
-                    <LinearGradient
-                        colors={['#f09433', '#e6683c', '#dc2743', '#cc2366', '#bc1888']} // Insta-like gradient
-                        style={styles.storyGradient}
-                    >
-                        <View style={styles.storyRingInner}>
-                            <ResilientImage uri={item.image} style={styles.storyAvatar} fallbackIcon="person" />
+                    <View style={styles.storyNameRow}>
+                        <Text style={styles.storyName} numberOfLines={1}>Your Story</Text>
+                    </View>
+                </TouchableOpacity>
+            );
+        }
+
+        const hasUnviewed = item.hasUnviewed !== false;
+        return (
+            <TouchableOpacity style={styles.storyItem} onPress={() => onViewStory(item.groupIndex)}>
+                <View style={styles.storyRingContainer}>
+                    {hasUnviewed ? (
+                        <LinearGradient
+                            colors={['#f09433', '#e6683c', '#dc2743', '#cc2366', '#bc1888']}
+                            style={styles.storyGradient}
+                        >
+                            <View style={styles.storyRingInner}>
+                                <ResilientImage uri={item.user?.profilePicture} style={styles.storyAvatar} fallbackIcon="person" />
+                            </View>
+                        </LinearGradient>
+                    ) : (
+                        <View style={[styles.storyGradient, { backgroundColor: '#dbdbdb' }]}>
+                            <View style={styles.storyRingInner}>
+                                <ResilientImage uri={item.user?.profilePicture} style={styles.storyAvatar} fallbackIcon="person" />
+                            </View>
                         </View>
-                    </LinearGradient>
-                )}
-            </View>
-            <View style={styles.storyNameRow}>
-                <Text style={styles.storyName} numberOfLines={1}>{item.name}</Text>
-                {item.verified && (
-                    <Ionicons name="checkmark-circle" size={10} color={COLORS.royalBlue} style={{ marginLeft: 2 }} />
-                )}
-            </View>
-        </TouchableOpacity>
-    );
+                    )}
+                </View>
+                <View style={styles.storyNameRow}>
+                    <Text style={styles.storyName} numberOfLines={1}>{item.user?.name || 'User'}</Text>
+                    {item.user?.verified && (
+                        <Ionicons name="checkmark-circle" size={10} color={COLORS.royalBlue} style={{ marginLeft: 2 }} />
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.storiesContainer}>
@@ -170,7 +174,6 @@ const StoriesRail = () => {
 const FeedSkeleton = () => {
     return (
         <View style={styles.container}>
-            {/* Stories Skeleton */}
             <View style={styles.storiesContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesList}>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -182,7 +185,6 @@ const FeedSkeleton = () => {
                 </ScrollView>
             </View>
 
-            {/* Post Skeleton */}
             {[1, 2].map((i) => (
                 <View key={i} style={styles.postCard}>
                     <View style={styles.postHeader}>
@@ -201,7 +203,7 @@ const FeedSkeleton = () => {
     );
 };
 
-const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible }) => {
+const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible, onOpenModerationMenu }) => {
     const postUser = item.userId || {};
     const likesCount = item.likes ? item.likes.length : 0;
     const isFollowing = user?.following?.includes(postUser._id);
@@ -210,15 +212,16 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
     const heartOpacity = useRef(new Animated.Value(0)).current;
     const heartScale = useRef(new Animated.Value(0.5)).current;
     const lastTapRef = useRef(null);
-    const videoRef = useRef(null);
 
-    // Auto-pause when scrolled out of view
+    const isFocused = useIsFocused();
+    const isVideo = item.mediaType === 'video' || item.type === 'reel';
+    const videoRef = useRef(null);
+    const shouldRenderVideo = isVideo && isFocused && isVisible;
+
     useEffect(() => {
         if (!isVisible && isPlaying) {
             setIsPlaying(false);
-            if (videoRef.current) {
-                videoRef.current.pauseAsync();
-            }
+            videoRef.current?.pauseAsync();
         }
     }, [isVisible]);
 
@@ -253,8 +256,7 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
             animateHeart();
         } else {
             lastTapRef.current = now;
-            // Toggle play on single tap if it's a video
-            if (item.mediaType === 'video' || item.type === 'reel') {
+            if (shouldRenderVideo) {
                 if (isPlaying) {
                     videoRef.current?.pauseAsync();
                     setIsPlaying(false);
@@ -276,7 +278,6 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
 
     return (
         <View style={styles.postCard}>
-            {/* Post Header */}
             <View style={styles.postHeader}>
                 <TouchableOpacity
                     style={styles.postUserRow}
@@ -303,84 +304,86 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
                     </View>
                 </TouchableOpacity>
 
-                {/* Follow and Chat Actions */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {user?._id !== postUser._id && (
                         <TouchableOpacity
-                            style={[
-                                styles.followButton,
-                                isFollowing && styles.followingButton
-                            ]}
+                            style={[styles.followButton, isFollowing && styles.followingButton]}
                             onPress={() => handleFollow(postUser._id)}
                             disabled={isFollowing}
                         >
-                            <Text style={[
-                                styles.followButtonText,
-                                isFollowing && styles.followingButtonText
-                            ]}>
+                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
                                 {isFollowing ? 'Following' : 'Follow'}
                             </Text>
+                        </TouchableOpacity>
+                    )}
+                    {user?._id !== postUser._id && (
+                        <TouchableOpacity
+                            onPress={() => onOpenModerationMenu?.(item)}
+                            style={styles.moreButton}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.black} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
 
-            {/* Post Media */}
             <TouchableOpacity
                 activeOpacity={1}
                 onPress={handleDoubleTap}
                 style={styles.mediaContainer}
             >
-                {(item.mediaType === 'video' || item.type === 'reel') ? (
-                    <>
-                        <Video
-                            ref={videoRef}
-                            source={{ uri: item.mediaUrl }}
-                            style={styles.postImage}
-                            resizeMode="cover"
-                            isMuted={false}
-                            isLooping
-                            initialStatus={{ positionMillis: 100 }} // Preview frame
-                            onPlaybackStatusUpdate={(status) => {
-                                if (status.didJustFinish && !status.isLooping) {
-                                    setIsPlaying(false);
-                                }
-                            }}
-                        />
-                        {/* Play Button Overlay */}
-                        {!isPlaying && (
-                            <View style={styles.playIconOverlay}>
-                                <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.8)" />
-                            </View>
-                        )}
-                    </>
+                {isVideo ? (
+                    shouldRenderVideo ? (
+                        <>
+                            <Video
+                                ref={videoRef}
+                                source={{ uri: item.mediaUrl }}
+                                style={styles.postImage}
+                                resizeMode="cover"
+                                isMuted={false}
+                                shouldPlay={isVisible && isFocused}
+                                isLooping={false}
+                                usePoster
+                                posterSource={{ uri: item.mediaUrl }}
+                                posterStyle={styles.postImage}
+                                initialStatus={{ positionMillis: 0 }}
+                                onError={(error) => {
+                                    console.warn('Feed video error:', error);
+                                }}
+                            />
+                            {(!isPlaying && !shouldRenderVideo) && (
+                                <View style={styles.playIconOverlay}>
+                                    <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.8)" />
+                                </View>
+                            )}
+                        </>
+                    ) : (
+                        <View style={[styles.postImage, styles.videoFallback]}>
+                            <Ionicons name="videocam-outline" size={52} color="rgba(255,255,255,0.45)" />
+                            <Text style={styles.videoFallbackText}>Video preview</Text>
+                        </View>
+                    )
                 ) : (
                     <ResilientImage
                         uri={item.mediaUrl}
                         style={styles.postImage}
-                        fallbackIcon="image-outline"
-                        fallbackLabel="Image unavailable"
+                        fallbackIcon="image"
                     />
                 )}
 
-                {/* Animated Heart Overlay */}
                 <Animated.View style={[
                     styles.heartOverlay,
-                    {
-                        opacity: heartOpacity,
-                        transform: [{ scale: heartScale }]
-                    }
+                    { opacity: heartOpacity, transform: [{ scale: heartScale }] }
                 ]}>
                     <Ionicons name="heart" size={80} color={COLORS.white} />
                 </Animated.View>
 
-                {/* Location Tag Overlay */}
                 <TouchableOpacity style={styles.locationTag}>
                     <Ionicons name="location-sharp" size={12} color={COLORS.white} />
                 </TouchableOpacity>
             </TouchableOpacity>
 
-            {/* Actions */}
             <View style={styles.actionRow}>
                 <View style={styles.actionLeft}>
                     <TouchableOpacity
@@ -403,40 +406,39 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible 
                         <Ionicons name="paper-plane-outline" size={26} color={COLORS.black} />
                     </TouchableOpacity>
                 </View>
-                {/* Bookmark */}
                 <TouchableOpacity>
                     <Ionicons name="bookmark-outline" size={26} color={COLORS.black} />
                 </TouchableOpacity>
             </View>
 
-            {/* Likes count */}
             <View style={styles.likesContainer}>
                 <Text style={styles.likesText}>{likesCount} likes</Text>
             </View>
 
-            {/* Caption */}
-            {
-                item.content && (
-                    <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
-                        <Text numberOfLines={2}>
-                            <Text style={{ fontWeight: 'bold' }}>{postUser.name} </Text>
-                            <Text>{item.content}</Text>
-                        </Text>
-                    </View>
-                )
-            }
-        </View >
+            {item.content && (
+                <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
+                    <Text numberOfLines={2}>
+                        <Text style={{ fontWeight: 'bold' }}>{postUser.name} </Text>
+                        <Text>{item.content}</Text>
+                    </Text>
+                </View>
+            )}
+        </View>
     );
 };
 
 export default function FeedScreen({ navigation }) {
     const { user, setAuthSession, token } = useAuth();
     const [posts, setPosts] = useState([]);
+    const [storyGroups, setStoryGroups] = useState([]);
+    const [viewerVisible, setViewerVisible] = useState(false);
+    const [viewerStartGroup, setViewerStartGroup] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const isScreenFocused = useIsFocused();
 
     const [viewableItems, setViewableItems] = useState([]);
     const viewabilityConfigCallbackPairs = useRef([
@@ -451,14 +453,9 @@ export default function FeedScreen({ navigation }) {
     const handleFollow = async (userId) => {
         try {
             await userService.followUser(userId);
-
-            // Optimistically update local user state
             const currentFollowing = user.following || [];
             if (!currentFollowing.includes(userId)) {
-                const updatedUser = {
-                    ...user,
-                    following: [...currentFollowing, userId]
-                };
+                const updatedUser = { ...user, following: [...currentFollowing, userId] };
                 setAuthSession(updatedUser, token);
             }
         } catch (error) {
@@ -466,9 +463,114 @@ export default function FeedScreen({ navigation }) {
         }
     };
 
+    const handleReportPost = async (post) => {
+        try {
+            await postService.reportPost(post._id, {
+                reason: 'inappropriate_content',
+                details: 'Reported from feed'
+            });
+            Alert.alert('Reported', 'Thanks. We will review this post.');
+        } catch (error) {
+            console.error('Report post error:', error);
+            Alert.alert('Error', 'Failed to report post.');
+        }
+    };
+
+    const handleBlockUser = async (post) => {
+        const targetUserId = post.userId?._id;
+        if (!targetUserId) return;
+
+        Alert.alert(
+            'Block User',
+            'Blocking this user will remove their content from your feed immediately.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await userService.blockUser(targetUserId, {
+                                reason: 'abusive_user',
+                                details: 'Blocked from feed'
+                            });
+                            setPosts(prev => prev.filter(p => p.userId?._id !== targetUserId));
+                            setStoryGroups(prev => prev.filter(g => g.user?._id !== targetUserId));
+                            Alert.alert('Blocked', 'Their content has been removed from your feed.');
+                        } catch (error) {
+                            console.error('Block user error:', error);
+                            Alert.alert('Error', 'Failed to block user.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const openModerationMenu = (post) => {
+        Alert.alert(
+            'Post Options',
+            'Choose an action',
+            [
+                { text: 'Report Post', onPress: () => handleReportPost(post) },
+                { text: 'Block User', style: 'destructive', onPress: () => handleBlockUser(post) },
+                { text: 'Cancel', style: 'cancel' }
+            ]
+        );
+    };
+
     useEffect(() => {
-        fetchPosts();
-    }, []);
+        if (isScreenFocused) {
+            fetchPosts(1, true);
+            fetchStories();
+        }
+    }, [isScreenFocused]);
+
+    const fetchStories = async () => {
+        try {
+            const data = await storyService.getFeed();
+            setStoryGroups(data.groups || []);
+        } catch (e) {
+            // silently ignore — stories are not critical
+        }
+    };
+
+    const handleAddStory = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Please allow access to your photo library to add a story.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsEditing: true,
+                quality: 0.85,
+            });
+
+            if (result.canceled || !result.assets?.[0]) return;
+
+            const asset = result.assets[0];
+            const mediaType = asset.type === 'video' ? 'video' : 'image';
+
+            const uploaded = await mediaService.uploadMedia({
+                uri: asset.uri,
+                type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                fileName: asset.fileName || (mediaType === 'video' ? 'story.mp4' : 'story.jpg'),
+            });
+
+            await storyService.createStory(uploaded.url, mediaType);
+            await fetchStories();
+        } catch (e) {
+            Alert.alert('Error', 'Failed to add story. Please try again.');
+        }
+    };
+
+    const handleViewStory = (groupIndex) => {
+        setViewerStartGroup(groupIndex);
+        setViewerVisible(true);
+    };
 
     const fetchPosts = async (pageToLoad = 1, isRefreshing = false) => {
         if (pageToLoad > 1) setLoadingMore(true);
@@ -507,52 +609,41 @@ export default function FeedScreen({ navigation }) {
     const handleRefresh = async () => {
         setRefreshing(true);
         setHasMore(true);
-        await fetchPosts(1, true);
+        await Promise.all([fetchPosts(1, true), fetchStories()]);
     };
 
     const handleChat = async (targetUser) => {
         try {
-            // Check for existing chat
             const chats = await chatService.getChats();
             const existingChat = chats.find(c =>
                 c.participants.some(p => p._id === targetUser._id)
             );
 
             if (existingChat) {
-                navigation.navigate('ChatDetail', {
-                    chatId: existingChat._id,
-                    otherUser: targetUser
-                });
+                navigation.navigate('ChatDetail', { chatId: existingChat._id, otherUser: targetUser });
             } else {
-                // Create new chat
                 const newChat = await chatService.createChat('chat', [targetUser._id]);
-                navigation.navigate('ChatDetail', {
-                    chatId: newChat._id,
-                    otherUser: targetUser
-                });
+                navigation.navigate('ChatDetail', { chatId: newChat._id, otherUser: targetUser });
             }
         } catch (error) {
             console.error('Chat error:', error);
-            // Alert.alert('Error', 'Failed to open chat');
         }
     };
 
-    const renderPost = ({ item }) => {
-        return (
-            <PostItem
-                item={item}
-                user={user}
-                navigation={navigation}
-                handleFollow={handleFollow}
-                handleChat={handleChat}
-                isVisible={viewableItems.includes(item._id)}
-            />
-        );
-    };
+    const renderPost = ({ item }) => (
+        <PostItem
+            item={item}
+            user={user}
+            navigation={navigation}
+            handleFollow={handleFollow}
+            handleChat={handleChat}
+            isVisible={viewableItems.includes(item._id)}
+            onOpenModerationMenu={openModerationMenu}
+        />
+    );
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.iconButton}
@@ -580,7 +671,6 @@ export default function FeedScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* Feed List */}
             {loading ? (
                 <FeedSkeleton />
             ) : (
@@ -588,7 +678,14 @@ export default function FeedScreen({ navigation }) {
                     data={posts}
                     renderItem={renderPost}
                     keyExtractor={(item) => item._id}
-                    ListHeaderComponent={<StoriesRail />}
+                    ListHeaderComponent={
+                        <StoriesRail
+                            user={user}
+                            storyGroups={storyGroups}
+                            onAddStory={handleAddStory}
+                            onViewStory={handleViewStory}
+                        />
+                    }
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                     showsVerticalScrollIndicator={false}
                     onEndReached={handleLoadMore}
@@ -604,6 +701,17 @@ export default function FeedScreen({ navigation }) {
                             <Text style={{ color: COLORS.darkGray }}>No posts yet</Text>
                         </View>
                     }
+                />
+            )}
+
+            {viewerVisible && storyGroups.length > 0 && (
+                <StoryViewer
+                    groups={storyGroups}
+                    startGroupIndex={viewerStartGroup}
+                    onClose={() => {
+                        setViewerVisible(false);
+                        fetchStories();
+                    }}
                 />
             )}
         </View>
@@ -628,7 +736,7 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: COLORS.black,
-        fontFamily: Platform.OS === 'ios' ? 'Arial' : 'Roboto' // Simple bold sans
+        fontFamily: Platform.OS === 'ios' ? 'Arial' : 'Roboto'
     },
     headerRight: {
         flexDirection: 'row',
@@ -651,7 +759,6 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20
     },
-    // Stories
     storiesContainer: {
         paddingVertical: 10,
         borderBottomWidth: 1,
@@ -735,7 +842,6 @@ const styles = StyleSheet.create({
         maxWidth: 60,
         textAlign: 'center'
     },
-    // Post
     postCard: {
         marginBottom: 10
     },
@@ -769,6 +875,10 @@ const styles = StyleSheet.create({
     followingButtonText: {
         color: COLORS.black
     },
+    moreButton: {
+        padding: 6,
+        borderRadius: 16
+    },
     postAvatar: {
         width: 32,
         height: 32,
@@ -787,7 +897,7 @@ const styles = StyleSheet.create({
     },
     mediaContainer: {
         width: width,
-        height: width * 1.25, // 4:5 aspect ratio
+        height: width * 1.25,
         backgroundColor: '#f0f0f0',
         position: 'relative'
     },
@@ -836,9 +946,6 @@ const styles = StyleSheet.create({
         marginTop: -40,
         marginLeft: -40,
         zIndex: 10,
-        textShadowColor: 'rgba(0, 0, 0, 0.4)',
-        textShadowOffset: { width: 0, height: 4 },
-        textShadowRadius: 10,
     },
     playIconOverlay: {
         position: 'absolute',
@@ -849,5 +956,15 @@ const styles = StyleSheet.create({
         zIndex: 5,
         justifyContent: 'center',
         alignItems: 'center'
+    },
+    videoFallback: {
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    videoFallbackText: {
+        marginTop: 10,
+        color: 'rgba(255,255,255,0.7)',
+        fontWeight: '600'
     }
 });

@@ -111,6 +111,16 @@ export const userService = {
         return response.data;
     },
 
+    blockUser: async (userId, data = {}) => {
+        const response = await api.post(`/api/users/${userId}/block`, data);
+        return response.data;
+    },
+
+    unblockUser: async (userId) => {
+        const response = await api.post(`/api/users/${userId}/unblock`);
+        return response.data;
+    },
+
     getNearbyUsers: async (lat, lng, category) => {
         const response = await api.get('/api/users/nearby', {
             params: { lat, lng, category }
@@ -161,6 +171,11 @@ export const postService = {
 
     deletePost: async (postId) => {
         const response = await api.delete(`/api/posts/${postId}`);
+        return response.data;
+    },
+
+    reportPost: async (postId, data = {}) => {
+        const response = await api.post(`/api/posts/${postId}/report`, data);
         return response.data;
     }
 };
@@ -215,6 +230,25 @@ export const chatService = {
     getChatMessages: async (chatId) => {
         const response = await api.get(`/api/chats/${chatId}`);
         return response.data.chat || null;
+    }
+};
+
+// ==================== STORY SERVICES ====================
+
+export const storyService = {
+    getFeed: async () => {
+        const response = await api.get('/api/stories/feed');
+        return response.data;
+    },
+    createStory: async (mediaUrl, mediaType = 'image') => {
+        const response = await api.post('/api/stories', { mediaUrl, mediaType });
+        return response.data;
+    },
+    viewStory: async (storyId) => {
+        await api.post(`/api/stories/${storyId}/view`);
+    },
+    deleteStory: async (storyId) => {
+        await api.delete(`/api/stories/${storyId}`);
     }
 };
 

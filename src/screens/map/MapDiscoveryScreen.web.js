@@ -27,7 +27,7 @@ const safeUri = (uri) => {
 const CATEGORIES = [
     { id: 'verified', label: 'Verified Voice', icon: 'checkmark-circle' },
     { id: 'global', label: 'Global Pulse', icon: 'globe' },
-    { id: 'plant', label: 'Ghost Note', icon: 'leaf' },
+    { id: 'ghost', label: 'Ghost Note', icon: 'leaf' },
 ];
 
 const DEFAULT_REGION = {
