@@ -213,6 +213,7 @@ const userSchema = new mongoose.Schema({
     age: Number,
     bio: String,
     profilePicture: String,
+    gender: String,
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     blockedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     location: {
@@ -1650,3 +1651,13 @@ server.listen(PORT, () => {
     console.log(`🚀 INFLIQ MVP Server running on port ${PORT}`);
     console.log(`📱 Frontend should connect to: http://localhost:${PORT}`);
 });
+
+// Keep Render.com free instance warm — ping self every 10 minutes
+if (process.env.RENDER_EXTERNAL_URL) {
+    setInterval(() => {
+        const url = `${process.env.RENDER_EXTERNAL_URL}/health`;
+        require('https').get(url, (r) => {
+            console.log(`♻️  Keep-alive ping: ${r.statusCode}`);
+        }).on('error', () => {});
+    }, 10 * 60 * 1000);
+}
