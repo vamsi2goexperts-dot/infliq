@@ -1062,6 +1062,40 @@ app.post('/api/posts/:id/report', authenticateToken, async (req, res) => {
 });
 
 // Block abusive user and hide their content immediately
+app.post('/api/users/:id/report', authenticateToken, async (req, res) => {
+    try {
+        const targetUserId = req.params.id;
+        const { reason = 'abusive_user', details = '' } = req.body || {};
+
+        if (targetUserId === req.user.userId) {
+            return res.status(400).json({ error: 'Cannot report yourself' });
+        }
+
+        const targetUser = await User.findById(targetUserId).select('_id');
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await ContentReport.create({
+            reporterId: req.user.userId,
+            targetType: 'user',
+            targetId: targetUserId,
+            reason,
+            details,
+            status: 'pending'
+        });
+
+        res.json({
+            success: true,
+            message: 'User report submitted for review within 24 hours'
+        });
+    } catch (error) {
+        console.error('Report user error:', error);
+        res.status(500).json({ error: 'Failed to report user' });
+    }
+});
+
+// Block abusive user and hide their content immediately
 app.post('/api/users/:id/block', authenticateToken, async (req, res) => {
     try {
         const targetUserId = req.params.id;
@@ -1581,6 +1615,15 @@ io.on('connection', (socket) => {
         console.log(`📨 Received send-message from ${socket.id}:`, { chatId, text: text?.substring(0, 50), senderId });
 
         try {
+            if (containsObjectionableContent(text)) {
+                socket.emit('message-error', {
+                    chatId,
+                    error: 'Message contains objectionable language',
+                    reason: 'moderation_blocked'
+                });
+                return;
+            }
+
             const chat = await Chat.findByIdAndUpdate(
                 chatId,
                 {
