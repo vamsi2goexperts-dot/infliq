@@ -31,7 +31,7 @@ const SectionHeader = ({ title }) => (
 );
 
 export default function SettingsScreen({ navigation }) {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const insets = useSafeAreaInsets();
     const [toast, setToast] = React.useState({ visible: false, message: '', type: 'success' });
 
@@ -156,9 +156,9 @@ export default function SettingsScreen({ navigation }) {
                         {
                             title: "Personal Information",
                             items: [
-                                { label: "Email", value: "user@infliq.com", type: "text" },
-                                { label: "Phone Number", value: "+91 94414*****7", type: "text" },
-                                { label: "Gender", value: "Not specified", type: "text" }
+                                { label: "Email", value: user?.email || "Not specified", type: "text" },
+                                { label: "Phone Number", value: user?.phone || "Not specified", type: "text" },
+                                { label: "Gender", value: user?.gender || "Not specified", type: "text" }
                             ]
                         },
                         {

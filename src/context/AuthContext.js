@@ -87,8 +87,26 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const updateUser = (updatedUser) => {
+        const newUser = { ...user, ...updatedUser };
+        setUser(newUser);
+        AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(err => console.error('Failed to sync user to storage:', err));
+    };
+
+    const refreshUser = async () => {
+        if (!user?._id) return;
+        try {
+            const freshUserData = await userService.getProfile(user._id);
+            const userObj = freshUserData.user || freshUserData;
+            setUser(userObj);
+            await AsyncStorage.setItem('user', JSON.stringify(userObj));
+        } catch (error) {
+            console.error('Failed to refresh user:', error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, loginWithOTP, register, logout, setAuthSession }}>
+        <AuthContext.Provider value={{ user, token, loading, login, loginWithOTP, register, logout, setAuthSession, updateUser, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

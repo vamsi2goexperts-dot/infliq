@@ -32,6 +32,7 @@ export default function RegisterScreen({ navigation }) {
     const [userId, setUserId] = useState(null);
     const [verifiedUser, setVerifiedUser] = useState(null);
     const [verifiedToken, setVerifiedToken] = useState(null);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
 
     const handleSendOTP = async () => {
         if (!phone || phone.length < 10) {
@@ -85,6 +86,10 @@ export default function RegisterScreen({ navigation }) {
         }
         if (!isPhoneVerified) {
             Alert.alert('Error', 'Please verify your mobile number first');
+            return;
+        }
+        if (!agreedToTerms) {
+            Alert.alert('Error', 'Please agree to the Terms of Service and Community Guidelines to continue');
             return;
         }
 
@@ -213,14 +218,32 @@ export default function RegisterScreen({ navigation }) {
                                 </View>
                             )}
 
-                            {/* 5. Create Account Button (Enabled only when verified) */}
+                            {/* 5. Terms of Service */}
+                            <TouchableOpacity
+                                style={styles.termsRow}
+                                onPress={() => setAgreedToTerms(prev => !prev)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                                    {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
+                                </View>
+                                <Text style={styles.termsText}>
+                                    I agree to the{' '}
+                                    <Text style={styles.termsLink}>Terms of Service</Text>
+                                    {' '}and{' '}
+                                    <Text style={styles.termsLink}>Community Guidelines</Text>
+                                    {'. '}By joining you agree to our zero-tolerance policy for objectionable content.
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* 6. Create Account Button (Enabled only when verified + terms agreed) */}
                             <TouchableOpacity
                                 style={[
                                     styles.registerButton,
-                                    (!isPhoneVerified || !name) && styles.buttonDisabled
+                                    (!isPhoneVerified || !name || !agreedToTerms) && styles.buttonDisabled
                                 ]}
                                 onPress={handleCreateAccount}
-                                disabled={loading || !isPhoneVerified || !name}
+                                disabled={loading || !isPhoneVerified || !name || !agreedToTerms}
                             >
                                 <Text style={styles.registerButtonText}>
                                     {loading ? 'Creating...' : 'Create Account'}
@@ -381,5 +404,43 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 10,
         opacity: 0.8
-    }
+    },
+    termsRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 14,
+        marginTop: 4,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.7)',
+        marginRight: 10,
+        marginTop: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    checkboxChecked: {
+        backgroundColor: COLORS.royalBlue,
+        borderColor: COLORS.royalBlue,
+    },
+    checkmark: {
+        color: COLORS.white,
+        fontSize: 13,
+        fontWeight: 'bold',
+    },
+    termsText: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        flex: 1,
+        lineHeight: 18,
+    },
+    termsLink: {
+        color: COLORS.white,
+        fontWeight: '700',
+        textDecorationLine: 'underline',
+    },
 });

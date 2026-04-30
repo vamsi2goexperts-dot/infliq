@@ -4,9 +4,9 @@ import {
     StyleSheet, Dimensions, StatusBar, Animated, PanResponder
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video } from 'expo-av';
 import { storyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import ManagedVideoView from './ManagedVideoView';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const STORY_DURATION = 5000;
@@ -100,12 +100,13 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
             <View style={styles.container} {...panResponder.panHandlers}>
                 {/* Background media */}
                 {currentStory.mediaType === 'video' && safeUri(currentStory.mediaUrl) ? (
-                    <Video
-                        source={{ uri: safeUri(currentStory.mediaUrl) }}
+                    <ManagedVideoView
+                        uri={safeUri(currentStory.mediaUrl)}
                         style={StyleSheet.absoluteFill}
-                        resizeMode="cover"
+                        contentFit="cover"
                         shouldPlay={!paused}
-                        isLooping={false}
+                        loop={false}
+                        nativeControls={false}
                     />
                 ) : (
                     <Image
@@ -139,10 +140,13 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <Image
-                        source={{ uri: safeUri(currentGroup.user.profilePicture) || 'https://via.placeholder.com/40' }}
-                        style={styles.avatar}
-                    />
+                    {safeUri(currentGroup.user.profilePicture) ? (
+                        <Image source={{ uri: safeUri(currentGroup.user.profilePicture) }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, { backgroundColor: '#555', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Ionicons name="person" size={18} color="#fff" />
+                        </View>
+                    )}
                     <View style={{ flex: 1, marginLeft: 10 }}>
                         <Text style={styles.username}>{currentGroup.user.name}</Text>
                         <Text style={styles.timeAgo}>

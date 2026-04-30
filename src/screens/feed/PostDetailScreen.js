@@ -13,10 +13,10 @@ import {
     StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video } from 'expo-av';
 import { COLORS } from '../../utils/constants';
 import { postService, userService } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ManagedVideoView from '../../components/ManagedVideoView';
 
 const { width } = Dimensions.get('window');
 
@@ -165,10 +165,13 @@ export default function PostDetailScreen({ route, navigation }) {
             <ScrollView>
                 {/* User Info */}
                 <View style={styles.userInfo}>
-                    <Image
-                        source={{ uri: post.userId?.profilePicture || 'https://via.placeholder.com/40' }}
-                        style={styles.avatar}
-                    />
+                    {post.userId?.profilePicture ? (
+                        <Image source={{ uri: post.userId.profilePicture }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, { backgroundColor: '#DDD', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Ionicons name="person" size={18} color="#999" />
+                        </View>
+                    )}
                     <View style={styles.userMeta}>
                         <Text style={styles.username}>{post.userId?.name || 'User'}</Text>
                         <Text style={styles.timestamp}>
@@ -183,20 +186,17 @@ export default function PostDetailScreen({ route, navigation }) {
                 {/* Media Section */}
                 <View style={styles.mediaContainer}>
                     {isVideo ? (
-                        <Video
-                            source={{ uri: post.mediaUrl }}
+                        <ManagedVideoView
+                            uri={post.mediaUrl}
                             style={styles.media}
-                            useNativeControls
-                            resizeMode="contain"
-                            isLooping
+                            contentFit="contain"
+                            nativeControls
+                            loop
                             shouldPlay
-                            onError={(error) => {
-                                console.log('Post video load error:', error);
-                            }}
                         />
                     ) : (
                         <Image
-                            source={{ uri: post.mediaUrl || 'https://via.placeholder.com/600' }}
+                            source={{ uri: post.mediaUrl }}
                             style={styles.media}
                             resizeMode="contain"
                         />

@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
-import { chatService, callService } from '../../services/api';
+import { chatService, callService, userService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import socketService from '../../services/socket.service';
 
@@ -74,11 +74,20 @@ export default function ChatDetailScreen({ route, navigation }) {
 
         socketService.on('user-typing', typingHandler);
 
+        const messageErrorHandler = (data) => {
+            if (data.chatId === chatId) {
+                Alert.alert('Message blocked', data.error || 'This message could not be sent.');
+            }
+        };
+
+        socketService.on('message-error', messageErrorHandler);
+
         return () => {
             // Cleanup on unmount or chatId change
             console.log('🧹 [ChatDetail] Cleaning up socket listener for chatId:', chatId);
             socketService.off('new-message', messageHandler);
             socketService.off('user-typing', typingHandler);
+            socketService.off('message-error', messageErrorHandler);
         };
     }, [chatId]);
 
@@ -141,6 +150,62 @@ export default function ChatDetailScreen({ route, navigation }) {
             console.error('Call initialization error:', error);
             Alert.alert('Error', 'Failed to start call');
         }
+    };
+
+    const handleReportChat = async () => {
+        if (!otherUser?._id) return;
+
+        try {
+            await userService.reportUser(otherUser._id, {
+                reason: 'abusive_chat',
+                details: `Reported from chat ${chatId}`
+            });
+            Alert.alert('Reported', 'Thanks. We will review this chat within 24 hours.');
+        } catch (error) {
+            console.error('Report chat error:', error);
+            Alert.alert('Error', 'Failed to report this chat.');
+        }
+    };
+
+    const handleBlockUser = () => {
+        if (!otherUser?._id) return;
+
+        Alert.alert(
+            'Block User',
+            `Block ${otherUser.name || 'this user'}? You will no longer see their content or receive messages from them.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await userService.blockUser(otherUser._id, {
+                                reason: 'abusive_chat',
+                                details: `Blocked from chat ${chatId}`
+                            });
+                            Alert.alert('Blocked', 'This user has been blocked.');
+                            navigation.goBack();
+                        } catch (error) {
+                            console.error('Block chat user error:', error);
+                            Alert.alert('Error', 'Failed to block this user.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const openModerationMenu = () => {
+        Alert.alert(
+            otherUser?.name || 'User',
+            'Choose an action',
+            [
+                { text: 'Report Chat', onPress: handleReportChat },
+                { text: 'Block User', style: 'destructive', onPress: handleBlockUser },
+                { text: 'Cancel', style: 'cancel' },
+            ]
+        );
     };
 
     const renderMessage = ({ item }) => {
@@ -225,6 +290,9 @@ export default function ChatDetailScreen({ route, navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleCall('video')} style={styles.actionButton}>
                         <Ionicons name="videocam-outline" size={24} color={COLORS.royalBlue} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={openModerationMenu} style={styles.actionButton}>
+                        <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.royalBlue} />
                     </TouchableOpacity>
                 </View>
             </View>

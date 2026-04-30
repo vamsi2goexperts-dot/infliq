@@ -20,9 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../../utils/constants';
 import { userService, mediaService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function EditProfileScreen({ route, navigation }) {
     const { profile } = route.params;
+    const { updateUser } = useAuth();
     const [name, setName] = useState(profile.name || '');
     const [email, setEmail] = useState(profile.email || '');
     const [gender, setGender] = useState(profile.gender || '');
@@ -69,13 +71,16 @@ export default function EditProfileScreen({ route, navigation }) {
                 console.log('✅ Upload successful:', finalImageUrl);
             }
 
-            await userService.updateProfile(profile._id, {
+            const updatedData = {
                 name,
                 email,
                 gender,
                 bio,
                 profilePicture: finalImageUrl
-            });
+            };
+
+            await userService.updateProfile(profile._id, updatedData);
+            updateUser(updatedData);
 
             if (Platform.OS === 'web') {
                 navigation.navigate('Profile');
@@ -122,10 +127,16 @@ export default function EditProfileScreen({ route, navigation }) {
                     <View style={styles.avatarContainer}>
                         <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
                             <View style={styles.avatarWrapper}>
-                                <Image
-                                    source={{ uri: localImageUri || profilePicture || 'https://via.placeholder.com/150' }}
-                                    style={styles.avatar}
-                                />
+                                {(localImageUri || profilePicture) ? (
+                                    <Image
+                                        source={{ uri: localImageUri || profilePicture }}
+                                        style={styles.avatar}
+                                    />
+                                ) : (
+                                    <View style={[styles.avatar, { backgroundColor: '#DDD', justifyContent: 'center', alignItems: 'center' }]}>
+                                        <Ionicons name="person" size={60} color="#999" />
+                                    </View>
+                                )}
                                 <View style={styles.cameraBadge}>
                                     <Ionicons name="camera" size={18} color={COLORS.white} />
                                 </View>

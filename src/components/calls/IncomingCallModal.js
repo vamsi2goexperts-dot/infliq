@@ -78,12 +78,13 @@ export default function IncomingCallModal({ visible, call, onAccept, onReject })
                     {/* Caller Profile Image with Pulse */}
                     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                         <View style={styles.imageContainer}>
-                            <Image
-                                source={{
-                                    uri: call.caller?.profilePicture || 'https://via.placeholder.com/150'
-                                }}
-                                style={styles.callerImage}
-                            />
+                            {call.caller?.profilePicture ? (
+                                <Image source={{ uri: call.caller.profilePicture }} style={styles.callerImage} />
+                            ) : (
+                                <View style={[styles.callerImage, { backgroundColor: '#DDD', justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Ionicons name="person" size={60} color="#999" />
+                                </View>
+                            )}
                             <View style={styles.imageRing} />
                         </View>
                     </Animated.View>

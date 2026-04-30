@@ -14,7 +14,6 @@ import {
     Animated,
     Easing
 } from 'react-native';
-import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../utils/constants';
@@ -143,6 +142,55 @@ export default function ProfileScreen({ route, navigation }) {
     const onRefresh = async () => {
         await loadProfile();
         await loadPosts();
+    };
+
+    const handleBlockFromProfile = () => {
+        Alert.alert(
+            'Block User',
+            `Block ${profile?.name}? Their content will no longer appear for you.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await userService.blockUser(profile._id, { reason: 'Blocked from profile' });
+                            Alert.alert('Blocked', 'User has been blocked.');
+                            navigation.goBack();
+                        } catch (e) {
+                            Alert.alert('Error', 'Failed to block user.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleReportFromProfile = async () => {
+        if (!profile?._id) return;
+
+        try {
+            await userService.reportUser(profile._id, {
+                reason: 'abusive_user',
+                details: 'Reported from profile'
+            });
+            Alert.alert('Reported', 'Thanks. We will review this account within 24 hours.');
+        } catch (e) {
+            Alert.alert('Error', 'Failed to report this user.');
+        }
+    };
+
+    const openProfileMenu = () => {
+        Alert.alert(
+            profile?.name || 'User',
+            '',
+            [
+                { text: 'Report User', onPress: handleReportFromProfile },
+                { text: 'Block User', style: 'destructive', onPress: handleBlockFromProfile },
+                { text: 'Cancel', style: 'cancel' },
+            ]
+        );
     };
 
     const handleLogout = async () => {
@@ -298,12 +346,19 @@ export default function ProfileScreen({ route, navigation }) {
                             <Text style={styles.notificationBadgeText}>{STATIC_NOTIFICATIONS.length}</Text>
                         </View>
                     </TouchableOpacity>
-                    {isOwnProfile && (
+                    {isOwnProfile ? (
                         <TouchableOpacity
                             style={styles.headerIcon}
                             onPress={() => navigation.navigate('Settings')}
                         >
                             <Ionicons name="settings-outline" size={26} color={COLORS.black} />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.headerIcon}
+                            onPress={openProfileMenu}
+                        >
+                            <Ionicons name="ellipsis-horizontal" size={26} color={COLORS.black} />
                         </TouchableOpacity>
                     )}
                 </View>

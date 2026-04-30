@@ -3,12 +3,12 @@
     "name": "INFLIQ",
     "slug": "infliq",
     "scheme": "infliq",
-    "version": "6.0.1",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-screen.png",
       "resizeMode": "contain",
       "backgroundColor": "#00008B"
     },
@@ -16,7 +16,7 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.infliq.app",
       "buildNumber": "6",
       "infoPlist": {

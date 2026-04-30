@@ -14,7 +14,6 @@ import {
     Animated,
     ScrollView
 } from 'react-native';
-import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
 import { postService, userService, chatService, storyService, mediaService } from '../../services/api';
@@ -24,6 +23,7 @@ import { useIsFocused } from '@react-navigation/native';
 import Skeleton from '../../components/Skeleton';
 import StoryViewer from '../../components/StoryViewer';
 import * as ImagePicker from 'expo-image-picker';
+import ManagedVideoView from '../../components/ManagedVideoView';
 
 const { width } = Dimensions.get('window');
 
@@ -207,7 +207,6 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible,
     const postUser = item.userId || {};
     const likesCount = item.likes ? item.likes.length : 0;
     const isFollowing = user?.following?.includes(postUser._id);
-    const [isPlaying, setIsPlaying] = useState(false);
     const [isLiked, setIsLiked] = useState(item.likes?.includes(user?._id));
     const heartOpacity = useRef(new Animated.Value(0)).current;
     const heartScale = useRef(new Animated.Value(0.5)).current;
@@ -215,15 +214,7 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible,
 
     const isFocused = useIsFocused();
     const isVideo = item.mediaType === 'video' || item.type === 'reel';
-    const videoRef = useRef(null);
     const shouldRenderVideo = isVideo && isFocused && isVisible;
-
-    useEffect(() => {
-        if (!isVisible && isPlaying) {
-            setIsPlaying(false);
-            videoRef.current?.pauseAsync();
-        }
-    }, [isVisible]);
 
     const animateHeart = () => {
         heartScale.setValue(0.5);
@@ -256,15 +247,6 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible,
             animateHeart();
         } else {
             lastTapRef.current = now;
-            if (shouldRenderVideo) {
-                if (isPlaying) {
-                    videoRef.current?.pauseAsync();
-                    setIsPlaying(false);
-                } else {
-                    videoRef.current?.playAsync();
-                    setIsPlaying(true);
-                }
-            }
         }
     };
 
@@ -336,27 +318,15 @@ const PostItem = ({ item, user, navigation, handleFollow, handleChat, isVisible,
                 {isVideo ? (
                     shouldRenderVideo ? (
                         <>
-                            <Video
-                                ref={videoRef}
-                                source={{ uri: item.mediaUrl }}
+                            <ManagedVideoView
+                                uri={item.mediaUrl}
                                 style={styles.postImage}
-                                resizeMode="cover"
+                                contentFit="cover"
                                 isMuted={false}
                                 shouldPlay={isVisible && isFocused}
-                                isLooping={false}
-                                usePoster
-                                posterSource={{ uri: item.mediaUrl }}
-                                posterStyle={styles.postImage}
-                                initialStatus={{ positionMillis: 0 }}
-                                onError={(error) => {
-                                    console.warn('Feed video error:', error);
-                                }}
+                                loop={false}
+                                nativeControls={false}
                             />
-                            {(!isPlaying && !shouldRenderVideo) && (
-                                <View style={styles.playIconOverlay}>
-                                    <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.8)" />
-                                </View>
-                            )}
                         </>
                     ) : (
                         <View style={[styles.postImage, styles.videoFallback]}>

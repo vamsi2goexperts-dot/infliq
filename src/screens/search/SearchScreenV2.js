@@ -54,10 +54,13 @@ export default function SearchScreen({ navigation }) {
                 }
             }}
         >
-            <Image
-                source={{ uri: item.profilePicture || 'https://via.placeholder.com/50' }}
-                style={styles.resultAvatar}
-            />
+            {item.profilePicture ? (
+                <Image source={{ uri: item.profilePicture }} style={styles.resultAvatar} />
+            ) : (
+                <View style={[styles.resultAvatar, { backgroundColor: '#DDD', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="person" size={22} color="#999" />
+                </View>
+            )}
             <View>
                 <Text style={styles.resultName}>{item.name}</Text>
                 <Text style={styles.resultInfo}>{item.phone || item.email}</Text>

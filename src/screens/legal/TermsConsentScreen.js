@@ -52,8 +52,17 @@ export default function TermsConsentScreen({ onAccepted }) {
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Moderation and removal</Text>
                     <Text style={styles.cardText}>
-                        We may remove content, limit distribution, or disable accounts that violate
-                        these terms. Reports are reviewed promptly by the developer or moderation team.
+                        Reports about objectionable content or abusive users are reviewed within 24
+                        hours. We remove violating content and may suspend or disable the user who
+                        posted it.
+                    </Text>
+                </View>
+
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Report and block tools</Text>
+                    <Text style={styles.cardText}>
+                        You can report posts, profiles, reels, or chats, and block abusive users from
+                        profile, feed, reel, and message screens.
                     </Text>
                 </View>
 

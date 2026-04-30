@@ -116,6 +116,11 @@ export const userService = {
         return response.data;
     },
 
+    reportUser: async (userId, data = {}) => {
+        const response = await api.post(`/api/users/${userId}/report`, data);
+        return response.data;
+    },
+
     unblockUser: async (userId) => {
         const response = await api.post(`/api/users/${userId}/unblock`);
         return response.data;

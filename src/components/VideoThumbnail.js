@@ -1,18 +1,19 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Video } from 'expo-av';
 import { COLORS } from '../utils/constants';
+import ManagedVideoView from './ManagedVideoView';
 
 export default function VideoThumbnail({ uri, style }) {
     return (
         <View style={[style, styles.container]}>
-            <Video
-                source={{ uri }}
+            <ManagedVideoView
+                uri={uri}
                 style={StyleSheet.absoluteFill}
-                resizeMode="cover"
+                contentFit="cover"
                 shouldPlay={false}
-                positionMillis={100} // Show frame at 0.1s
                 isMuted={true}
+                initialTimeSeconds={0.1}
+                nativeControls={false}
             />
         </View>
     );

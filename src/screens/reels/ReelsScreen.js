@@ -7,15 +7,16 @@ import {
     Dimensions,
     TouchableOpacity,
     Image,
-    ActivityIndicator
+    ActivityIndicator,
+    Alert
 } from 'react-native';
-import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../utils/constants';
-import { postService } from '../../services/api';
+import { postService, userService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Animated } from 'react-native';
+import ManagedVideoView from '../../components/ManagedVideoView';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,13 +25,66 @@ const safeVideoUri = (uri) => {
     return uri.startsWith('http://') ? uri.replace('http://', 'https://') : uri;
 };
 
-const ReelItem = ({ item, isVisible, nearVisible, index }) => {
+const ReelItem = ({ item, isVisible, nearVisible, onUserBlocked }) => {
     const { user } = useAuth();
-    const [videoError, setVideoError] = useState(false);
     const [isLiked, setIsLiked] = useState(item.likes?.includes(user?._id));
     const [likesCount, setLikesCount] = useState(item.likes?.length || 0);
     const lastTapRef = useRef(null);
     const videoUri = safeVideoUri(item.mediaUrl);
+    const isOwnReel = item.userId?._id === user?._id;
+
+    const handleReportReel = async () => {
+        if (!item?._id || item._id === 'dummy') return;
+
+        try {
+            await postService.reportPost(item._id, {
+                reason: 'inappropriate_content',
+                details: 'Reported from reels'
+            });
+            Alert.alert('Reported', 'Thanks. We will review this content within 24 hours.');
+        } catch (error) {
+            console.error('Report reel error:', error);
+            Alert.alert('Error', 'Failed to report this reel.');
+        }
+    };
+
+    const handleBlockReelUser = () => {
+        const targetUserId = item.userId?._id;
+        if (!targetUserId) return;
+
+        Alert.alert(
+            'Block User',
+            'Blocking this user will hide their content and prevent further interaction.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await userService.blockUser(targetUserId, {
+                                reason: 'abusive_user',
+                                details: 'Blocked from reels'
+                            });
+                            onUserBlocked?.(targetUserId);
+                            Alert.alert('Blocked', 'This user has been blocked.');
+                        } catch (error) {
+                            console.error('Block reel user error:', error);
+                            Alert.alert('Error', 'Failed to block this user.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const openReelMenu = () => {
+        Alert.alert('Options', '', [
+            { text: 'Report', onPress: handleReportReel },
+            { text: 'Block User', style: 'destructive', onPress: handleBlockReelUser },
+            { text: 'Cancel', style: 'cancel' },
+        ]);
+    };
 
     const heartScale = useRef(new Animated.Value(0)).current;
     const heartOpacity = useRef(new Animated.Value(0)).current;
@@ -98,24 +152,15 @@ const ReelItem = ({ item, isVisible, nearVisible, index }) => {
                 style={StyleSheet.absoluteFill}
             >
                 {nearVisible && isFocused ? (
-                    videoUri && !videoError ? (
-                        <Video
+                    videoUri ? (
+                        <ManagedVideoView
                             style={styles.video}
-                            source={{ uri: videoUri }}
-                            resizeMode="cover"
-                            isLooping={false}
+                            uri={videoUri}
+                            contentFit="cover"
+                            loop={false}
                             shouldPlay={isVisible}
                             isMuted={false}
-                            onError={(error) => {
-                                console.warn(`[ReelItem ${index}] Video error:`, error);
-                                setVideoError(true);
-                            }}
-                            onPlaybackStatusUpdate={s => {
-                                if (s.error && !videoError) {
-                                    console.warn(`[ReelItem ${index}] Playback error:`, s.error);
-                                    setVideoError(true);
-                                }
-                            }}
+                            nativeControls={false}
                         />
                     ) : (
                         <View style={[styles.video, styles.videoFallback]}>
@@ -142,10 +187,13 @@ const ReelItem = ({ item, isVisible, nearVisible, index }) => {
             <View style={styles.overlay} pointerEvents="box-none">
                 <View style={styles.leftColumn}>
                     <View style={styles.userRow}>
-                        <Image
-                            source={{ uri: item.userId?.profilePicture || 'https://via.placeholder.com/40' }}
-                            style={styles.avatar}
-                        />
+                        {item.userId?.profilePicture ? (
+                            <Image source={{ uri: item.userId.profilePicture }} style={styles.avatar} />
+                        ) : (
+                            <View style={[styles.avatar, { backgroundColor: '#555', justifyContent: 'center', alignItems: 'center' }]}>
+                                <Ionicons name="person" size={18} color="#fff" />
+                            </View>
+                        )}
                         <Text style={styles.username}>{item.userId?.name || 'User'}</Text>
                         <TouchableOpacity style={styles.followButton}>
                             <Text style={styles.followText}>Follow</Text>
@@ -172,6 +220,11 @@ const ReelItem = ({ item, isVisible, nearVisible, index }) => {
                     <TouchableOpacity style={styles.sideButton}>
                         <Ionicons name="share-social-outline" size={30} color={COLORS.white} />
                     </TouchableOpacity>
+                    {!isOwnReel && (
+                        <TouchableOpacity style={styles.sideButton} onPress={openReelMenu}>
+                            <Ionicons name="ellipsis-horizontal" size={26} color={COLORS.white} />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         </View>
@@ -247,6 +300,10 @@ export default function ReelsScreen() {
         }
     };
 
+    const handleUserBlocked = (blockedUserId) => {
+        setReels(prev => prev.filter(reel => reel.userId?._id !== blockedUserId));
+    };
+
     const onLayout = (event) => {
         const { height } = event.nativeEvent.layout;
         if (height > 0) {
@@ -281,7 +338,7 @@ export default function ReelsScreen() {
                             item={item}
                             isVisible={index === visibleIndex}
                             nearVisible={index === visibleIndex}
-                            index={index}
+                            onUserBlocked={handleUserBlocked}
                         />
                     </View>
                 )}
