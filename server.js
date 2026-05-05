@@ -433,7 +433,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
             // ALOTS.IO SMS Integration
             try {
                 const randomId = Math.random().toString(36).substring(2, 15);
-                // Numbers must be without + for this provider usually, or depends on their API
                 const cleanPhone = phone.replace('+', ''); 
                 
                 const smsData = {
@@ -448,15 +447,23 @@ app.post('/api/auth/send-otp', async (req, res) => {
                     numbers: cleanPhone
                 };
 
-                await axios.post('https://alots.io/api/v1/sms/mt', smsData, {
+                // Switching to x-www-form-urlencoded as required by most SMS gateways
+                const params = new URLSearchParams();
+                Object.keys(smsData).forEach(key => params.append(key, smsData[key]));
+
+                await axios({
+                    method: 'post',
+                    url: 'https://alots.io/api/v1/sms/mt',
+                    data: params.toString(),
                     headers: {
                         'Authorization': '61acea92-6360-447e-a5b4-93cf05897991',
-                        'Content-Type': 'application/json'
+                        'token': '61acea92-6360-447e-a5b4-93cf05897991', // Try both common header names
+                        'Content-Type': 'application/x-www-form-urlencoded'
                     }
                 });
                 console.log(`✅ OTP sent via Alots.io to ${phone}`);
             } catch (smsError) {
-                console.error('❌ Alots.io SMS error:', smsError.response?.data || smsError.message);
+                console.error('❌ Alots.io SMS error:', smsError.response?.status, smsError.response?.data || smsError.message);
                 // Fallback log for debugging
                 console.log(`📱 [FALLBACK] OTP for ${phone}: ${otp}`);
             }
