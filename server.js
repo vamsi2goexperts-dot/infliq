@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
@@ -62,6 +63,11 @@ app.use('/uploads', express.static(uploadsDir));
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
+});
+
+// Health Check Endpoint (for cron jobs / keep-alive)
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // MongoDB Connection
@@ -421,20 +427,39 @@ app.post('/api/auth/send-otp', async (req, res) => {
         otpStore.set(phone, otp);
         setTimeout(() => otpStore.delete(phone), 300000); // 5 min expiry
 
-        if (twilioClient) {
-            try {
-                await twilioClient.messages.create({
-                    body: `Your INFLIQ verification code is: ${otp}`,
-                    from: process.env.TWILIO_PHONE_NUMBER,
-                    to: phone
-                });
-                console.log(`✅ OTP sent via Twilio to ${phone}`);
-            } catch (twilioError) {
-                console.log(`⚠️ Twilio error, using TEST MODE - OTP for ${phone}: ${otp}`);
-                console.error('Twilio error:', twilioError.message);
-            }
-        } else {
+        if (isTestPhoneNumber(phone)) {
             console.log(`📱 TEST MODE - OTP for ${phone}: ${otp}`);
+        } else {
+            // ALOTS.IO SMS Integration
+            try {
+                const randomId = Math.random().toString(36).substring(2, 15);
+                // Numbers must be without + for this provider usually, or depends on their API
+                const cleanPhone = phone.replace('+', ''); 
+                
+                const smsData = {
+                    senderId: 'DCATCH',
+                    dcs: '0',
+                    flashSms: '0',
+                    peld: '1701176941646257005',
+                    text: `${otp} is your OTP for verifying your DAY CATCH Account. Please do not share it with anyone.`,
+                    dltTemplateId: '1707176943132258803',
+                    chainValue: '1701176941646257005,1702160915855670817',
+                    messageId: randomId,
+                    numbers: cleanPhone
+                };
+
+                await axios.post('https://alots.io/api/v1/sms/mt', smsData, {
+                    headers: {
+                        'Authorization': '61acea92-6360-447e-a5b4-93cf05897991',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                console.log(`✅ OTP sent via Alots.io to ${phone}`);
+            } catch (smsError) {
+                console.error('❌ Alots.io SMS error:', smsError.response?.data || smsError.message);
+                // Fallback log for debugging
+                console.log(`📱 [FALLBACK] OTP for ${phone}: ${otp}`);
+            }
         }
 
         res.json({ success: true, message: 'OTP sent successfully' });
