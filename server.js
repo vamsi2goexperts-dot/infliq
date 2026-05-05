@@ -437,28 +437,20 @@ app.post('/api/auth/send-otp', async (req, res) => {
                 
                 const smsData = {
                     senderId: 'DCATCH',
-                    dcs: '0',
-                    flashSms: '0',
-                    peld: '1701176941646257005',
+                    dcs: 0,
+                    flashSms: 0,
+                    peId: '1701176941646257005',
                     text: `${otp} is your OTP for verifying your DAY CATCH Account. Please do not share it with anyone.`,
                     dltTemplateId: '1707176943132258803',
                     chainValue: '1701176941646257005,1702160915855670817',
                     messageId: randomId,
-                    numbers: cleanPhone
+                    numbers: [cleanPhone] // API expects an array
                 };
 
-                // Switching to x-www-form-urlencoded as required by most SMS gateways
-                const params = new URLSearchParams();
-                Object.keys(smsData).forEach(key => params.append(key, smsData[key]));
-
-                await axios({
-                    method: 'post',
-                    url: 'https://alots.io/api/v1/sms/mt',
-                    data: params.toString(),
+                await axios.post('https://alots.io/api/v1/sms/mt', smsData, {
                     headers: {
-                        'Authorization': '61acea92-6360-447e-a5b4-93cf05897991',
-                        'token': '61acea92-6360-447e-a5b4-93cf05897991', // Try both common header names
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Authorization': 'Bearer 61acea92-6360-447e-a5b4-93cf05897991',
+                        'Content-Type': 'application/json'
                     }
                 });
                 console.log(`✅ OTP sent via Alots.io to ${phone}`);
